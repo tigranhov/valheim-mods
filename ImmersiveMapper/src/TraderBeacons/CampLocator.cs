@@ -10,13 +10,27 @@ namespace ImmersiveMapper.TraderBeacons
     /// </summary>
     internal static class CampLocator
     {
-        /// <summary>Fills <paramref name="into"/> with every placed camp and candidate spot per trader prefab.</summary>
+        /// <summary>
+        /// Fills <paramref name="into"/> with every placed camp and candidate spot per trader prefab.
+        /// Reuses the lists already in <paramref name="into"/>, since this runs every scan.
+        /// </summary>
         public static void Collect(Dictionary<string, List<ZoneSystem.LocationInstance>> into, IReadOnlyList<TraderDef> defs)
         {
-            into.Clear();
+            if (into.Count != defs.Count)
+            {
+                // The trader list changed in the config.
+                into.Clear();
+            }
+            foreach (List<ZoneSystem.LocationInstance> list in into.Values)
+            {
+                list.Clear();
+            }
             foreach (TraderDef def in defs)
             {
-                into[def.Prefab] = new List<ZoneSystem.LocationInstance>();
+                if (!into.ContainsKey(def.Prefab))
+                {
+                    into[def.Prefab] = new List<ZoneSystem.LocationInstance>();
+                }
             }
             foreach (ZoneSystem.LocationInstance instance in ZoneSystem.instance.m_locationInstances.Values)
             {

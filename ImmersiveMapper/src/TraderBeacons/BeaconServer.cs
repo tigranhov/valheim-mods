@@ -70,9 +70,15 @@ namespace ImmersiveMapper.TraderBeacons
 
         private static void Scan()
         {
+            CollectTravellers();
+            if (Travellers.Count == 0)
+            {
+                // Nobody online: skip the location scan. Anyone who left is forgotten below.
+                Signalling.Clear();
+                return;
+            }
             IReadOnlyList<TraderDef> defs = TraderList.All;
             CampLocator.Collect(Camps, defs);
-            CollectTravellers();
             Online.Clear();
             foreach (Traveller t in Travellers)
             {

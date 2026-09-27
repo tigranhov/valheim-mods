@@ -19,6 +19,11 @@ namespace ImmersiveMapper.TraderBeacons
         private readonly ParticleSystemRenderer _renderer;
         private readonly MaterialPropertyBlock _block = new MaterialPropertyBlock();
         private float _windTimer;
+        // What the fog override was last built from; it's only re-applied when one of these changes noticeably.
+        private float _appliedScale = float.NaN;
+        private float _appliedDensity;
+        private float _appliedStart;
+        private float _appliedEnd;
 
         public SmokeColumn(Transform parent)
         {
@@ -87,17 +92,34 @@ namespace ImmersiveMapper.TraderBeacons
         /// <summary>Fog for this column as if it were <paramref name="scale"/> times as far away; 1 = normal fog.</summary>
         public void SetFogScale(float scale)
         {
+            scale = Mathf.Min(scale, 1f);
+            float density = RenderSettings.fogDensity;
+            float start = RenderSettings.fogStartDistance;
+            float end = RenderSettings.fogEndDistance;
+            // The game's fog drifts a little every frame with time of day, so compare with a 1% tolerance.
+            if (Near(scale, _appliedScale) && Near(density, _appliedDensity) && Near(start, _appliedStart) && Near(end, _appliedEnd))
+            {
+                return;
+            }
+            _appliedScale = scale;
+            _appliedDensity = density;
+            _appliedStart = start;
+            _appliedEnd = end;
             if (scale >= 1f)
             {
                 _renderer.SetPropertyBlock(null);
                 return;
             }
             // Same layout Unity uses: x = density/sqrt(ln2) (exp2), y = density/ln2 (exp), z = -1/(end-start), w = end/(end-start) (linear).
-            float density = RenderSettings.fogDensity * scale;
-            float end = RenderSettings.fogEndDistance;
-            float range = Mathf.Max(end - RenderSettings.fogStartDistance, 0.001f);
-            _block.SetVector(FogParamsId, new Vector4(density / 0.8325546f, density / 0.6931472f, -scale / range, end / range));
+            float scaled = density * scale;
+            float range = Mathf.Max(end - start, 0.001f);
+            _block.SetVector(FogParamsId, new Vector4(scaled / 0.8325546f, scaled / 0.6931472f, -scale / range, end / range));
             _renderer.SetPropertyBlock(_block);
+        }
+
+        private static bool Near(float value, float applied)
+        {
+            return Mathf.Abs(value - applied) <= Mathf.Abs(applied) * 0.01f;
         }
 
         public void SetEmitting(bool on)
