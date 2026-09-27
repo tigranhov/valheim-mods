@@ -56,6 +56,8 @@ Build order: **1. Trader Beacons → 2. Cargo Lashing (+ Packing Crates) → 3. 
   the haze stays as if 100 m away. The impostor mode is no longer needed (candidate for removal).
 - 2026-09-27 — Impostor removed (DistantView, DrawMode, ImpostorDistance). FogAsIfMeters default
   500 at first, then 300 (user's pick). First git commit.
+- 2026-09-27 — Milestone 2 becomes "Ship Cargo": cargo crates (user's idea, based on the crates a
+  broken ship leaves behind) + cart lashing, each switchable. See Milestone 2 for details.
 
 ### Repo layout (planned)
 ```
@@ -64,7 +66,7 @@ immersive-mapper/
   Directory.Build.props      # game path, profile path, shared build settings
   ImmersiveMapper.sln
   src/TraderBeacons/
-  src/CargoLashing/
+  src/ShipCargo/             # cargo crates + cart lashing
   src/Cartographer/
   companion/                 # optional web app (milestone 3e)
 ```
@@ -86,15 +88,15 @@ and the Bog Witch (Swamp, ~3–8 km from center) is pure luck. Vanilla only reve
 
 **Idea:** traders notice travellers from afar and signal them — in-world, visible, not a pin.
 
-**Status (2026-09-26):** v0.1 written and compiling (`src/TraderBeacons`). Not yet tested in game.
-Next: create the `Dev` profile → test with `tb_test` → test against a real camp → tune → server.
+**Status (2026-09-27):** v0.1 works in single player (Dev profile): smoke visible far away, drawn at
+the real spot. Remaining: real-camp test, night look, install on the dedicated server.
 
 **In-game test checklist (Dev profile, a throwaway test world):**
 1. ✅ `tb_test` smoke visible from far away, drawn at the real spot.
-2. `devcommands`, `tod 0.9`, `tb_test 800 smoke`: is the smoke readable at night at all?
+2. `devcommands`, `tod 0.9`, `tb_test 400 smoke`: is the smoke readable at night at all?
 3. `tb_camps` (spoiler) → go within ~300 m of Haldor (camp gets generated) → smoke appears →
-   walk away: still visible up to 1200 m → walk in: stops within 40 m or on talking.
-4. `tb_resetfound` to repeat. Check `BepInEx/LogOutput.log` for "Firework from…" and "Smoke material…".
+   walk away: still visible up to 500 m → walk in: stops within 40 m or on talking.
+4. `tb_resetfound` to repeat. Check `BepInEx/LogOutput.log` for errors.
 
 **Console commands:** `tb_test [meters] [smoke|fireworks]` (reveals nothing),
 `tb_camps` and `tb_resetfound` (need devcommands + server admin).
@@ -103,12 +105,10 @@ Next: create the `Dev` profile → test with `tb_test` → test against a real c
 - Server checks player positions periodically (e.g. every 5 s).
 - A camp starts signalling once the game has **generated** it (someone came within ~300 m, the
   same moment vanilla would show the map icon). From then on it signals to every player within
-  the **signal radius** (max viewing distance, default 1200 m) who has **not yet found** it:
-  - **Day:** tall smoke column above the camp, visible over the treeline.
-  - **Dusk/Night:** firework volley (~1 min), repeated each night while someone is in range,
-    until the trader is found. (Hildir sells fireworks in vanilla — fits the lore.)
-- **Flash-to-bang:** firework sound is delayed by distance ÷ 343 m/s, so players can estimate
-  distance by counting seconds (ties into the Cartographer's Kit).
+  the **signal radius** (max viewing distance, default 500 m) who has **not yet found** it:
+  - **Day and night:** tall smoke column above the camp, visible over the treeline.
+  - **Optional, off by default:** firework volleys at night instead (judged too non-immersive),
+    with flash-to-bang sound delay (distance ÷ 343 m/s).
 - "Found" = player came within discovery range (≈ vanilla reveal radius, config) or talked to the
   trader. Stored server-side per player per world.
 - Everyone in the signal radius sees the signal (it's a real thing in the sky), not just one player.
@@ -167,7 +167,7 @@ volley duration & interval, smoke on/off, sound delay on/off, who sees it (in-ra
 
 ---
 
-## Milestone 2 — Cargo Lashing (+ Packing Crates)
+## Milestone 2 — Ship Cargo (cargo crates + cart lashing)
 
 **Problem:** relocating bases a lot; carts on boats bump around and fall off; slot limits.
 
@@ -175,20 +175,37 @@ volley duration & interval, smoke on/off, sound delay on/off, who sees it (in-ra
 `Azumatt-HaulersHelper` (cart physics tuning), `OdinPlus-CraftyCartsRemake` (station carts with
 storage), `MathiasDecrock-PlanBuild` (blueprints — useful for rebuilding a base).
 
-### v0.1 — Lash carts to ships
-- Interact with a cart standing on a ship deck → **"Lash to deck"**. The cart locks in place
-  relative to the ship until **"Untie"**.
-- Works with any object using the vanilla cart script (`Vagon`), incl. modded carts.
-- Lashed state saved on the cart (ship ID + local offset/rotation), survives relog/zone reload.
-- Auto-untie if the ship is destroyed; decide what happens if the ship sinks.
-- Research: parent + kinematic vs. physics joint; ownership & sync jitter; how ValheimRAFT handles it.
+**Decisions (2026-09-27):** build both features in one mod (`src/ShipCargo`), **each switchable in
+the config**. Crates first, then lashing. Lashing is free (no material cost), cargo doesn't slow
+the ship (vanilla ships ignore their hold's weight too), and there's no per-ship limit: whatever
+physically fits. A packed crate can't go into carts, ship holds or chests.
 
-### v0.2 — Packing Crates
-- Craftable crate packs several stacks of **one** stackable material into **one slot**
-  (e.g. "Crate of Wood ×250"). Weight = contents + crate. Unpack at destination.
-- Only plain stackable materials (no quality/durability items). Keeps the non-teleportable flag
-  of its contents.
-- Maybe later: a "sealed chest" you can pick up with contents inside.
+**Key research (decompiled 1.0.15):**
+- Carts (`Vagon`) are physics bodies pulled by a `ConfigurableJoint`; ships (`Ship`) are physics
+  bodies too. Each is simulated by its owner, often a different player → bumping, falling off.
+- `ZSyncTransform.m_characterParentSync`: the mechanism that keeps players steady on moving ships.
+  It syncs an object's position **relative to its parent** when the parent has a `ZNetView`,
+  and every client rebuilds it the same way. → Shared "ship passenger" code for crates and carts:
+  parent to the ship, freeze physics, relative sync; release on untie/pick-up/ship destroyed.
+- Ships' holds drop floating crates when a ship breaks (`Container.m_destroyedLootPrefab`) — the
+  look to reuse for our crate.
+
+### v0.1 — Cargo crates
+- Craftable crate (looks like the vanilla shipwreck crate), with its own slots (config).
+- Place it on the ground or on a ship deck. **On a deck it rides the ship**: never slides, never
+  falls off, synced for every player.
+- **Pick it up with its contents** → one heavy inventory item (weight = crate + contents). Place it
+  again at the destination.
+- Packed crates only live in a player inventory (not in carts, holds, chests or other crates).
+- If the ship is destroyed, crates on it float free (like the vanilla crates).
+- Research: vanilla crate prefab name; placement surface rules on ships; storing an inventory in
+  item data; per-item weight; blocking a packed crate from containers; death/tombstone.
+
+### v0.2 — Cart lashing
+- On a cart standing on a ship deck, Shift+E → **"Lash to ship"** / **"Untie"**. A lashed cart
+  rides the ship like a crate (body + wheels frozen, relative sync).
+- Works with anything using the vanilla cart script (`Vagon`), incl. CraftyCarts' carts.
+- Survives relog/zone reload. Ship destroyed → the cart is released with its contents.
 
 ### Existing mods to recommend alongside (not rebuild)
 LongshipUpgrades (bigger longship storage), BoatAdditions (knarr cargo ship), balrond shipyard
