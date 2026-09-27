@@ -113,7 +113,8 @@ namespace ImmersiveMapper.ShipCargo
         }
     }
 
-    // Dropping a crate starts placing it instead, so it never becomes a loose item on the ground.
+    // Dragging a crate out of the inventory sets it straight down nearby (never a loose item on the ground), so an
+    // over-encumbered player can always get rid of it.
     [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.DropItem))]
     internal static class DropItemPatch
     {
@@ -123,19 +124,19 @@ namespace ImmersiveMapper.ShipCargo
             {
                 return true;
             }
-            CrateGhost.Begin(player, inventory ?? player.GetInventory(), item);
-            __result = false;
+            __result = CratePlacement.DropNearby(player, inventory ?? player.GetInventory(), item);
             return false;
         }
     }
 
-    // While placing a crate, the mouse buttons place/cancel instead of attacking or blocking.
+    // While placing a crate (and until the button that placed or cancelled it is let go), the mouse buttons don't
+    // attack or block.
     [HarmonyPatch(typeof(Player), nameof(Player.SetControls))]
     internal static class PlacingControlsPatch
     {
         private static void Prefix(ref bool attack, ref bool attackHold, ref bool secondaryAttack, ref bool secondaryAttackHold, ref bool block, ref bool blockHold)
         {
-            if (!CrateGhost.Active)
+            if (!CrateGhost.OwnsMouseButtons)
             {
                 return;
             }
