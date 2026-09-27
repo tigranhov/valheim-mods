@@ -4,28 +4,44 @@ using UnityEngine;
 namespace ImmersiveMapper.ShipCargo
 {
     /// <summary>
-    /// The placed crate. Shift+E picks it up with everything inside: packed into an inventory item, or lifted to be
-    /// carried (<see cref="CargoConfig.PickUpMode"/>). Picking up follows the vanilla container flow: ask the owner,
-    /// who hands over ownership only if nobody has the crate open.
+    /// The placed crate, or the same crate loose (afloat, or tumbled off a stack). Shift+E picks it up with everything inside: packed into an
+    /// inventory item, or lifted to be carried (<see cref="CargoConfig.PickUpMode"/>). Picking up follows the vanilla
+    /// container flow: ask the owner, who hands over ownership only if nobody has the crate open.
     /// </summary>
     internal sealed class CargoCrate : MonoBehaviour
     {
         private const string RequestPickupRpc = "IM_RequestPickup";
         private const string PickupResponseRpc = "IM_PickupResponse";
-        // Guards against a loop if some item can't be moved into the floating crates.
-        private const int MaxSpillCrates = 20;
-        private const float WeightUpdateSeconds = 0.5f;
+        private const string TumbleRpc = "IM_Tumble";
+        // Guards the walk up a stack.
+        private const int MaxStack = 16;
+        // A small shove for crates tumbling off a stack, so they topple instead of dropping as a column.
+        private const float TumbleSpin = 1.5f;
+        private const float TumblePush = 0.6f;
 
-        /// <summary>Crates loaded here, for placement snapping.</summary>
+        /// <summary>Placed crates loaded here (not the loose ones), for placement snapping.</summary>
         public static readonly List<CargoCrate> All = new List<CargoCrate>();
 
         private ZNetView _nview;
         private Container _container;
         private ShipPassenger _passenger;
         private CrateCarry _carry;
-        private float _weightTimer;
+        private bool _loose;
+        private bool _trackingWeight;
 
         public bool IsCarried => _carry != null && _carry.IsCarried;
+
+        /// <summary>
+        /// Loose (<see cref="CrateSetup.FloatingPrefab"/>): a physics crate that floats in water and tumbles on land,
+        /// so nothing can be set on it.
+        /// </summary>
+        public bool IsLoose => _loose;
+
+        /// <summary>Riding a ship it's part of the ship, so it can't be broken (see <see cref="CrateDamagePatch"/>).</summary>
+        public bool IsRiding => _passenger != null && _passenger.IsAttached;
+
+        /// <summary>The ship it rides, if that ship is loaded here.</summary>
+        public Ship Ship => _passenger != null ? _passenger.CurrentShip : null;
 
         private static bool Carrying => CargoConfig.PickUpMode.Value != CarryMode.Inventory;
 
@@ -35,17 +51,28 @@ namespace ImmersiveMapper.ShipCargo
             _container = GetComponentInChildren<Container>();
             _passenger = GetComponent<ShipPassenger>();
             _carry = GetComponent<CrateCarry>();
+            _loose = GetComponent<Floating>() != null;
             if (_nview == null || _nview.GetZDO() == null)
             {
                 return;
             }
             _nview.Register<long>(RequestPickupRpc, RPC_RequestPickup);
             _nview.Register<bool>(PickupResponseRpc, RPC_PickupResponse);
+            _nview.Register(TumbleRpc, RPC_Tumble);
+            Destructible destructible = GetComponent<Destructible>();
+            if (destructible != null)
+            {
+                destructible.m_onDestroyed += OnBroken;
+            }
             if (_passenger != null)
             {
-                _passenger.ShipLost += SpillIntoWater;
+                _passenger.ShipLost += () => MakeLoose(false);
             }
-            All.Add(this);
+            if (!_loose)
+            {
+                All.Add(this);
+            }
+            TrackWeight();
         }
 
         private void OnDestroy()
@@ -53,15 +80,28 @@ namespace ImmersiveMapper.ShipCargo
             All.Remove(this);
         }
 
-        // The crate's weight for its ship's trim: the crate itself plus whatever is inside.
-        private void Update()
+        // Again once every component is awake, in case the container (which makes its inventory in its own Awake) woke later.
+        private void Start()
         {
-            _weightTimer -= Time.deltaTime;
-            if (_weightTimer > 0f || _passenger == null || _container == null || _container.GetInventory() == null)
+            TrackWeight();
+        }
+
+        private void TrackWeight()
+        {
+            Inventory inventory = _container != null ? _container.GetInventory() : null;
+            if (_trackingWeight || inventory == null || _passenger == null || _nview == null || _nview.GetZDO() == null)
             {
                 return;
             }
-            _weightTimer = WeightUpdateSeconds;
+            _trackingWeight = true;
+            inventory.m_onChanged += UpdateWeight;
+            UpdateWeight();
+        }
+
+        // The crate's weight, for its ship's trim and its carrier: the crate itself plus whatever is inside. The
+        // inventory keeps its total up to date, so this only has to follow its changes.
+        private void UpdateWeight()
+        {
             _passenger.Weight = CargoConfig.CrateWeight.Value + _container.GetInventory().GetTotalWeight();
         }
 
@@ -89,6 +129,12 @@ namespace ImmersiveMapper.ShipCargo
             if (Carrying && CrateCarry.IsCarrying(player))
             {
                 player.Message(MessageHud.MessageType.Center, "You're already carrying a crate");
+                return;
+            }
+            // Swimming with a crate drops it straight back into the water.
+            if (Carrying && player.IsSwimming())
+            {
+                player.Message(MessageHud.MessageType.Center, "You can't lift a crate while swimming");
                 return;
             }
             if (!Carrying && !player.GetInventory().HaveEmptySlot())
@@ -133,7 +179,14 @@ namespace ImmersiveMapper.ShipCargo
             }
             if (Carrying)
             {
-                _carry.Lift(player);
+                if (_loose)
+                {
+                    LiftLoose(player);
+                }
+                else
+                {
+                    _carry.Lift(player);
+                }
                 return;
             }
             byte[] contents = _nview.GetZDO().GetByteArray(ZDOVars.s_items);
@@ -198,29 +251,57 @@ namespace ImmersiveMapper.ShipCargo
             return inventory;
         }
 
-        // The ship this crate rode on was destroyed (or its carrier went swimming): like a ship's own hold, the cargo
-        // ends up in floating crates. The empty crate goes in too, so it isn't lost. Owner only.
-        public void SpillIntoWater()
+        // Broken (the owner runs this): everything stacked on it comes loose and tumbles down.
+        private void OnBroken()
         {
-            GameObject floating = ZNetScene.instance.GetPrefab(CrateSetup.VanillaCrate);
-            if (floating == null)
+            CargoCrate above = CratePlacement.CrateOnTop(this);
+            for (int i = 0; above != null && i < MaxStack; i++)
             {
-                Plugin.Log.LogWarning("No floating crate prefab; leaving the cargo crate where it is.");
+                CargoCrate next = CratePlacement.CrateOnTop(above);
+                above._nview.InvokeRPC(TumbleRpc);
+                above = next;
+            }
+        }
+
+        private void RPC_Tumble(long sender)
+        {
+            if (_nview.IsOwner() && !_loose && !IsCarried && !IsRiding)
+            {
+                MakeLoose(true);
+            }
+        }
+
+        /// <summary>
+        /// The crate comes loose, contents and all: it floats in the water (its ship was destroyed, or its carrier
+        /// went swimming) or tumbles off a broken stack, until someone picks it up. Owner only.
+        /// </summary>
+        public void MakeLoose(bool tumble)
+        {
+            if (CrateSetup.FloatingPrefab == null)
+            {
+                Plugin.Log.LogWarning("No loose crate prefab; leaving the cargo crate where it is.");
                 return;
             }
-            Inventory cargo = _container.GetInventory();
-            Container last = null;
-            for (int i = 0; i < MaxSpillCrates && (cargo.NrOfItems() > 0 || last == null); i++)
+            // Full size again (it's drawn smaller while carried), where the crate is now.
+            GameObject loose = CratePlacement.SpawnWithContents(CrateSetup.FloatingPrefab, transform.position, transform.rotation, _nview.GetZDO().GetByteArray(ZDOVars.s_items));
+            Rigidbody body = loose.GetComponent<Rigidbody>();
+            if (tumble && body != null)
             {
-                last = Instantiate(floating, transform.position + Random.insideUnitSphere, Random.rotation).GetComponent<Container>();
-                last.GetInventory().MoveAll(cargo);
-            }
-            if (!last.GetInventory().AddItem(CrateItem.Create(null, null)))
-            {
-                Instantiate(floating, transform.position + Random.insideUnitSphere, Random.rotation)
-                    .GetComponent<Container>().GetInventory().AddItem(CrateItem.Create(null, null));
+                Vector3 push = Random.insideUnitSphere * TumblePush;
+                push.y = 0f;
+                body.linearVelocity = push;
+                body.angularVelocity = Random.insideUnitSphere * TumbleSpin;
             }
             _nview.Destroy();
+        }
+
+        // Picked up again it's a placed crate, upright, and that one is carried.
+        private void LiftLoose(Player player)
+        {
+            Quaternion upright = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+            GameObject crate = CratePlacement.SpawnWithContents(CrateSetup.CratePrefab, transform.position, upright, _nview.GetZDO().GetByteArray(ZDOVars.s_items));
+            _nview.Destroy();
+            crate.GetComponent<CrateCarry>().Lift(player);
         }
     }
 }

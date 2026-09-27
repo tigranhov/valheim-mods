@@ -60,6 +60,8 @@ Build order: **1. Trader Beacons → 2. Cargo Lashing (+ Packing Crates) → 3. 
   (server logic also runs on a player-hosted game), but no server deployment work.
 - 2026-09-27 — Milestone 2 becomes "Ship Cargo": cargo crates (user's idea, based on the crates a
   broken ship leaves behind) + cart lashing, each switchable. See Milestone 2 for details.
+- 2026-09-27 — Ship Cargo performance pass before moving on: ship keys make crate network updates
+  ~15–20× rarer; Shift-crafting crates is limited to the room at the station (see Milestone 2).
 
 ### Repo layout (planned)
 ```
@@ -195,7 +197,9 @@ physically fits. A packed crate can't go into carts, ship holds or chests.
 ### v0.1 — Cargo crates
 **Status (2026-09-27):** in game: pick up → set down on a deck → rides the ship ✅. Reload with 4
 crates on one ship: all 4 back in place and riding ✅ (after switching from saved ZDO links, which
-keep one link per target, to finding the ship by deck offset). Crates are unbreakable.
+keep one link per target, to finding the ship by deck offset). Crates break like the shipwreck crates
+(`Health`, 0 = vanilla) on land or afloat: contents spill out, crates stacked on top come loose and tumble down. Riding
+a ship they are part of it and can't be broken: hits go to the ship. (First version: unbreakable.)
 Placement preview ✅ (ghost, snapping beside/on top, red where it clips), shimmer at sea fixed ✅
 (world-space noise/triplanar off in the crate material), karve walls count ✅ (a bit strict: the hull
 planks are convex shapes → now 0.15 m overlap allowed with the hull only).
@@ -215,9 +219,13 @@ Design notes from the code research:
 - Riding a ship is **not** Unity parenting (a networked child dies with its parent when the area
   unloads, leaving a dead instance in ZNetScene). Every client places the crate at a fixed offset
   from its own copy of the ship each frame; crate↔ship collisions are ignored; the owner moves the
-  ZDO along so the crate loads with the ship. Link = `SyncTransform` connection (survives reloads).
+  ZDO along so the crate loads with the ship. Link = a key the mod keeps in the ship's ZDO
+  (`IM_ShipKey`, survives reloads; ZDO ids don't), with the deck offset as fallback for older crates.
 - Known limit: standing *on top of* a crate while sailing doesn't carry you (the deck does).
-- Ship destroyed → crate contents + the empty crate go into vanilla floating `CargoCrate`s.
+- Ship destroyed → each crate drops into the water as itself, contents and all, as a loose crate
+  (`IM_CargoCrateAfloat`: the vanilla floating crate's physics, our slots; also what crates off a broken stack become). Shift+E fishes
+  it out (from a deck or shallow water; not while swimming) → a placed crate again, lifted or packed.
+  (First version spilled the contents + an empty crate item into vanilla floating crates.)
 
 **Test checklist (Dev profile, test world):**
 1. `devcommands`, `spawn IM_CargoCrateItem` (or craft at a workbench: 10 wood, 4 bronze nails).
@@ -261,8 +269,28 @@ before anything is used up. In Inventory mode crafting is vanilla (untested yet)
   speed/stride bob, too fast at Valheim's jog; then a footstep-event bob; both dropped.)
 - First try: all crates made you encumbered (flat rule) and the crate looked comically large.
 - Put down automatically when sitting/steering, dying, taking out the hammer; swimming drops it in
-  the water (floats away in a vanilla crate). Carrier gone / world reloaded → owner sets it down.
+  the water, where the crate floats as itself. Carrier gone / world reloaded → owner sets it down.
 - Also: a crate with another crate on top can't be picked up or lifted (it would be left hanging).
+- Shift-crafting (the game's "craft 5") makes only as many crates as there's room for at the station
+  (at least 1); the recipe panel shows that number. Needs as many free inventory slots, because the
+  game adds crafted crates to the inventory before the mod moves them to the station.
+
+### Performance pass (2026-09-27)
+Single player was already light (per-crate work is a few pose updates per frame). Changes:
+- **Network (the big one):** every ZDO update sends the crate's whole contents to each nearby
+  player (~0.5 KB for 4 full slots). A riding crate used to update up to 10×/s while sailing (0.25 m /
+  2° / 0.1 s). Now each ship gets a key and each crate remembers it, so after a reload the crate
+  finds its ship by the key, not by an exact saved position. Its ZDO only has to stay in the ship's
+  zone: at most every 2 s (1 m / 5°), plus right away when it crosses into a new zone. About 15–20×
+  less traffic from crates on ships. Until the key is confirmed (older crates, or a ship someone else
+  owns), the close sync is used. Carried crates: 4×/s → 2×/s.
+- Each crate position update also made its container re-read its contents (the game reloads a
+  container whenever its ZDO changes, checked once a second), so fewer updates also mean fewer reloads.
+- `CrateItem.IsCrate` (runs whenever the game weighs or adds any item) compared `Object.name`, which
+  allocates a string per call → now a prefab reference compare. Same for the crate recipe check.
+- `CrateCarry.CarriedBy` (several calls per player per frame) scanned every crate, with a cache that
+  only helped with one player → a player→crate dictionary.
+- Crate weight followed a 0.5 s timer on every crate → now updated only when its contents change.
 
 ### v0.2 — Cart lashing
 - On a cart standing on a ship deck, Shift+E → **"Lash to ship"** / **"Untie"**. A lashed cart

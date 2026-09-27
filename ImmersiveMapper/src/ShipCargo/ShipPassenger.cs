@@ -10,11 +10,12 @@ namespace ImmersiveMapper.ShipCargo
     /// parented to the ship: a networked child is destroyed along with its parent when the ship's area unloads,
     /// which leaves ZNetScene holding a dead instance.
     ///
-    /// The passenger stores no ship id. ZDO ids change when a world loads, and the game's saved links
-    /// (ZDO connections) keep only one link per target, so several crates on one ship would lose all but one.
-    /// Instead it stores its offset on the deck, and finds its ship again by that offset: the loaded ship whose
-    /// deck has this passenger sitting exactly there. The owner keeps the passenger's ZDO position close behind
-    /// the ship so that match holds after a reload.
+    /// ZDO ids change when a world loads, and the game's saved links (ZDO connections) keep only one link per target,
+    /// so several crates on one ship would lose all but one. Instead the passenger stores its ship's
+    /// <see cref="ShipKey"/> and its offset on the deck, and finds its ship again by that key. Without a key (older
+    /// crates, or a key the ship's owner hasn't confirmed yet) it goes by the offset: the loaded ship whose deck has
+    /// this passenger sitting exactly there, which only holds after a reload if the owner kept the passenger's ZDO
+    /// position close behind the ship.
     /// </summary>
     internal sealed class ShipPassenger : MonoBehaviour
     {
@@ -24,14 +25,24 @@ namespace ImmersiveMapper.ShipCargo
         private const float MatchRetrySeconds = 0.5f;
         // Give up on a ship that hasn't shown up for this long (it's gone, e.g. destroyed while unloaded).
         private const float LostAfterSeconds = 60f;
-        // The owner writes the ZDO position when the passenger has moved this far, at most every ZdoSyncSeconds.
-        private const float ZdoSyncDistance = 0.25f;
-        private const float ZdoSyncAngle = 2f;
-        private const float ZdoSyncSeconds = 0.1f;
+        // How often the owner checks that it and its ship agree on the ship's key.
+        private const float KeyCheckSeconds = 1f;
+        // The owner writes the ZDO position when the passenger has moved this far, at most this often. Every update
+        // sends the crate's whole contents to each player nearby, so while sailing this is most of a crate's cost.
+        // Until the ship has its key, the ZDO pose is how the passenger finds the ship after a reload: kept close.
+        private const float CloseSyncDistance = 0.25f;
+        private const float CloseSyncAngle = 2f;
+        private const float CloseSyncSeconds = 0.1f;
+        // With the key it only has to be in the ship's zone (so it loads along with the ship), and it moves to a new
+        // zone with the ship right away.
+        private const float LooseSyncDistance = 1f;
+        private const float LooseSyncAngle = 5f;
+        private const float LooseSyncSeconds = 2f;
 
         private static readonly int OnShipKey = "IM_OnShip".GetStableHashCode();
         private static readonly int LocalPosKey = "IM_ShipLocalPos".GetStableHashCode();
         private static readonly int LocalRotKey = "IM_ShipLocalRot".GetStableHashCode();
+        private static readonly int ShipKeyKey = "IM_ShipKey".GetStableHashCode();
 
         private static readonly List<ShipPassenger> Instances = new List<ShipPassenger>();
         private static readonly HashSet<Ship> LoadedShips = new HashSet<Ship>();
@@ -44,6 +55,10 @@ namespace ImmersiveMapper.ShipCargo
         private bool _onShip;
         private Vector3 _localPos;
         private Quaternion _localRot = Quaternion.identity;
+        private long _shipKey;
+        // The loaded ship has this passenger's key (owner only), so its ZDO pose may lag.
+        private bool _keyConfirmed;
+        private float _keyTimer;
         private Ship _ship;
         private Rigidbody _shipBody;
         private readonly List<Collider> _ignoring = new List<Collider>();
@@ -119,6 +134,7 @@ namespace ImmersiveMapper.ShipCargo
             ZDO zdo = _nview.GetZDO();
             zdo.Set(LocalPosKey, t.InverseTransformPoint(transform.position));
             zdo.Set(LocalRotKey, Quaternion.Inverse(t.rotation) * transform.rotation);
+            zdo.Set(ShipKeyKey, ShipKey.Claim(ship));
             zdo.Set(OnShipKey, true);
             SyncZdoPose(zdo);
             Refresh();
@@ -158,6 +174,7 @@ namespace ImmersiveMapper.ShipCargo
             bool onShip = zdo.GetBool(OnShipKey, zdo.GetVec3(LocalPosKey, out _));
             _localPos = zdo.GetVec3(LocalPosKey, Vector3.zero);
             _localRot = zdo.GetQuaternion(LocalRotKey, Quaternion.identity);
+            _shipKey = zdo.GetLong(ShipKeyKey, 0L);
             if (onShip != _onShip)
             {
                 _onShip = onShip;
@@ -199,13 +216,45 @@ namespace ImmersiveMapper.ShipCargo
             transform.SetPositionAndRotation(ship.TransformPoint(_localPos), ship.rotation * _localRot);
             if (_nview.IsOwner())
             {
-                _syncTimer += Time.deltaTime;
-                if (_syncTimer >= ZdoSyncSeconds
-                    && ((transform.position - _syncedPos).sqrMagnitude > ZdoSyncDistance * ZdoSyncDistance
-                        || Quaternion.Angle(transform.rotation, _syncedRot) > ZdoSyncAngle))
-                {
-                    SyncZdoPose(zdo);
-                }
+                CheckKey(zdo);
+                SyncWhenMoved(zdo);
+            }
+        }
+
+        // Adopts the ship's key, or gives a ship without one this passenger's. Also upgrades older crates.
+        private void CheckKey(ZDO zdo)
+        {
+            _keyTimer -= Time.deltaTime;
+            if (_keyTimer > 0f)
+            {
+                return;
+            }
+            _keyTimer = KeyCheckSeconds;
+            long key = ShipKey.Claim(_ship, _shipKey);
+            if (key != _shipKey)
+            {
+                zdo.Set(ShipKeyKey, key);
+                _shipKey = key;
+            }
+            _keyConfirmed = key != 0L && ShipKey.Get(_ship) == key;
+        }
+
+        private void SyncWhenMoved(ZDO zdo)
+        {
+            _syncTimer += Time.deltaTime;
+            Vector3 position = transform.position;
+            if (_keyConfirmed && ZoneSystem.GetSectorIndex(position) != zdo.GetSectorIndex())
+            {
+                SyncZdoPose(zdo);
+                return;
+            }
+            float seconds = _keyConfirmed ? LooseSyncSeconds : CloseSyncSeconds;
+            float distance = _keyConfirmed ? LooseSyncDistance : CloseSyncDistance;
+            float angle = _keyConfirmed ? LooseSyncAngle : CloseSyncAngle;
+            if (_syncTimer >= seconds
+                && ((position - _syncedPos).sqrMagnitude > distance * distance || Quaternion.Angle(transform.rotation, _syncedRot) > angle))
+            {
+                SyncZdoPose(zdo);
             }
         }
 
@@ -218,8 +267,8 @@ namespace ImmersiveMapper.ShipCargo
             zdo.SetRotation(_syncedRot);
         }
 
-        // Look for the loaded ship whose deck has this passenger at its stored offset. Compares saved (ZDO) poses
-        // on both sides, which were written together when the world was saved.
+        // Look for the loaded ship with this passenger's key. Failing that, the ship (without some other key) whose
+        // deck has this passenger at its stored offset, comparing saved (ZDO) poses on both sides.
         private bool FindShip(ZDO zdo)
         {
             _matchTimer -= Time.deltaTime;
@@ -233,9 +282,19 @@ namespace ImmersiveMapper.ShipCargo
             float bestError = MatchTolerance;
             foreach (Ship ship in LoadedShips)
             {
-                ZNetView view = ship != null ? ship.GetComponent<ZNetView>() : null;
+                ZNetView view = ship != null ? ship.m_nview : null;
                 ZDO shipZdo = view != null ? view.GetZDO() : null;
                 if (shipZdo == null)
+                {
+                    continue;
+                }
+                long key = ShipKey.Get(shipZdo);
+                if (key != 0L && key == _shipKey)
+                {
+                    best = ship;
+                    break;
+                }
+                if (key != 0L && _shipKey != 0L)
                 {
                     continue;
                 }
@@ -278,6 +337,8 @@ namespace ImmersiveMapper.ShipCargo
             }
             _ignoring.Clear();
             _ship = ship;
+            _keyConfirmed = false;
+            _keyTimer = 0f;
             _shipBody = ship != null ? ship.GetComponent<Rigidbody>() : null;
             if (ship == null)
             {

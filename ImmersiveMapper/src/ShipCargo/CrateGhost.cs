@@ -236,7 +236,7 @@ namespace ImmersiveMapper.ShipCargo
             _ghost.SetActive(true);
             bool snap = !ZInput.GetButton("AltPlace") && !ZInput.GetButton("JoyAltPlace");
             CargoCrate looked = snap ? hit.collider.GetComponentInParent<CargoCrate>() : null;
-            if (looked != null && SnapToFace(looked, hit.normal))
+            if (looked != null && !looked.IsLoose && SnapToFace(looked, hit.normal))
             {
                 // Placed against the face of the crate being looked at.
             }

@@ -69,6 +69,12 @@ namespace ImmersiveMapper.ShipCargo
                 reason = "Nothing to stand the crate on";
                 return false;
             }
+            CargoCrate under = support.collider.GetComponentInParent<CargoCrate>();
+            if (under != null && under.IsLoose)
+            {
+                reason = "Not on a loose crate";
+                return false;
+            }
             if (ship == null)
             {
                 ship = CratePlacement.ShipOf(support.collider);

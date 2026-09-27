@@ -16,30 +16,71 @@ namespace ImmersiveMapper.ShipCargo
         private const float ProbeAbove = 1f;
         private const float ProbeDepth = 4f;
         private const float WaitingRadius = 1.5f;
+        private const float RoomCacheSeconds = 0.25f;
+        private static readonly float[] Slots = { 0f, -1f, 1f };
 
         // Each station type's box in its own local space, measured once from its colliders.
         private static readonly Dictionary<string, Bounds> StationBounds = new Dictionary<string, Bounds>();
+        private static CraftingStation _roomStation;
+        private static float _roomUntil;
+        private static int _room;
 
         public static bool AppearsAtStation => CargoConfig.PickUpMode.Value != CarryMode.Inventory;
 
+        // Asked every frame while a recipe is shown: the item's name field, not Object.name (which allocates).
         public static bool IsCrateRecipe(Recipe recipe)
         {
-            return recipe != null && recipe.m_item != null && recipe.m_item.name == CrateSetup.CrateItemName;
+            return recipe != null && recipe.m_item != null && recipe.m_item.m_itemData.m_shared.m_name == CrateSetup.CrateDisplayName;
         }
 
         /// <summary>A free spot for a new crate at the station, or why there is none.</summary>
         public static bool FindSpot(CraftingStation station, Player player, out Vector3 position, out Quaternion rotation, out Ship ship, out string reason)
         {
-            position = Vector3.zero;
-            rotation = Quaternion.identity;
-            ship = null;
             Bounds bounds = BoundsOf(station);
-            Transform t = station.transform;
-            if (CountWaiting(t, bounds) >= CargoConfig.CratesAtStation.Value)
+            if (CountWaiting(station.transform, bounds) >= CargoConfig.CratesAtStation.Value)
             {
+                position = Vector3.zero;
+                rotation = Quaternion.identity;
+                ship = null;
                 reason = "Carry the crates at the workbench away first";
                 return false;
             }
+            if (CountSpots(station, player, bounds, 1, out position, out rotation, out ship) > 0)
+            {
+                reason = null;
+                return true;
+            }
+            reason = "No room for a crate at the workbench";
+            return false;
+        }
+
+        /// <summary>
+        /// How many new crates there's room for at the station, within <see cref="CargoConfig.CratesAtStation"/>.
+        /// Cached briefly unless <paramref name="fresh"/>: the recipe panel asks every frame.
+        /// </summary>
+        public static int RoomFor(CraftingStation station, Player player, bool fresh = false)
+        {
+            if (!fresh && station == _roomStation && Time.time < _roomUntil)
+            {
+                return _room;
+            }
+            Bounds bounds = BoundsOf(station);
+            int max = CargoConfig.CratesAtStation.Value - CountWaiting(station.transform, bounds);
+            _room = max > 0 ? CountSpots(station, player, bounds, max, out _, out _, out _) : 0;
+            _roomStation = station;
+            _roomUntil = Time.time + RoomCacheSeconds;
+            return _room;
+        }
+
+        // Free spots for a new crate, up to max, and where the first one is. The middle first, then either side: on
+        // top of the station, then on the ground on the crafter's side. The spots are a crate's width apart, so each
+        // one that's free now is still free once crates fill the others.
+        private static int CountSpots(CraftingStation station, Player player, Bounds bounds, int max, out Vector3 position, out Quaternion rotation, out Ship ship)
+        {
+            position = Vector3.zero;
+            rotation = Quaternion.identity;
+            ship = null;
+            Transform t = station.transform;
             // Rows run along the station's long side; crates face across it.
             bool alongX = bounds.size.x >= bounds.size.z;
             Vector3 rowAxis = alongX ? Vector3.right : Vector3.forward;
@@ -50,27 +91,35 @@ namespace ImmersiveMapper.ShipCargo
             float sideReach = Vector3.Scale(bounds.extents, sideAxis).magnitude + CrateShape.Size.z * 0.5f + GroundGap;
             Vector3 top = new Vector3(bounds.center.x, bounds.max.y + ProbeAbove, bounds.center.z);
             Vector3 beside = top + sideAxis * (sideSign * sideReach);
-            // The middle first, then either side: on top of the station, then on the ground on the crafter's side.
-            foreach (Vector3 rowCenter in new[] { top, beside })
+            int count = 0;
+            for (int row = 0; row < 2; row++)
             {
-                foreach (float slot in new[] { 0f, -1f, 1f })
+                Vector3 rowCenter = row == 0 ? top : beside;
+                foreach (float slot in Slots)
                 {
                     Vector3 probe = t.TransformPoint(rowCenter + rowAxis * (slot * spacing));
                     if (!Physics.Raycast(probe, Vector3.down, out RaycastHit hit, ProbeAbove + ProbeDepth + bounds.size.y, CrateFit.Mask, QueryTriggerInteraction.Ignore))
                     {
                         continue;
                     }
-                    ship = null;
-                    CrateFit.RestOn(hit, yaw, out position, out rotation, out ship);
-                    if (CrateFit.Fits(position, rotation, ref ship, out _))
+                    CrateFit.RestOn(hit, yaw, out Vector3 spot, out Quaternion turn, out Ship on);
+                    if (!CrateFit.Fits(spot, turn, ref on, out _))
                     {
-                        reason = null;
-                        return true;
+                        continue;
+                    }
+                    if (count == 0)
+                    {
+                        position = spot;
+                        rotation = turn;
+                        ship = on;
+                    }
+                    if (++count >= max)
+                    {
+                        return count;
                     }
                 }
             }
-            reason = "No room for a crate at the workbench";
-            return false;
+            return count;
         }
 
         private static int CountWaiting(Transform station, Bounds bounds)
@@ -155,6 +204,7 @@ namespace ImmersiveMapper.ShipCargo
         private static bool Prefix(InventoryGui __instance, Player player, out List<ItemDrop.ItemData> __state)
         {
             __state = null;
+            CrateMultiCraft.Apply(__instance, __instance.m_craftRecipe, fresh: true);
             if (!CrateCrafting.AppearsAtStation || !CrateCrafting.IsCrateRecipe(__instance.m_craftRecipe))
             {
                 return true;
@@ -201,6 +251,56 @@ namespace ImmersiveMapper.ShipCargo
                 }
                 CratePlacement.Spawn(player, inventory, item, position, rotation, ship);
             }
+        }
+    }
+
+    /// <summary>
+    /// Shift crafts several of an item at once. For crates that appear at the station, only as many as there's room
+    /// for there (at least one; the station refuses when it's full). The game reads the amount from one field when it
+    /// shows the recipe, checks the inventory, and crafts, so it's set before each of those.
+    /// </summary>
+    internal static class CrateMultiCraft
+    {
+        private static bool _limited;
+        private static int _usual;
+
+        public static void Apply(InventoryGui gui, Recipe recipe, bool fresh = false)
+        {
+            Player player = Player.m_localPlayer;
+            CraftingStation station = player != null ? player.GetCurrentCraftingStation() : null;
+            if (station == null || !CrateCrafting.AppearsAtStation || !CrateCrafting.IsCrateRecipe(recipe))
+            {
+                if (_limited)
+                {
+                    gui.m_multiCraftAmount = _usual;
+                    _limited = false;
+                }
+                return;
+            }
+            if (!_limited)
+            {
+                _usual = gui.m_multiCraftAmount;
+                _limited = true;
+            }
+            gui.m_multiCraftAmount = Mathf.Clamp(CrateCrafting.RoomFor(station, player, fresh), 1, _usual);
+        }
+    }
+
+    [HarmonyPatch(typeof(InventoryGui), "UpdateRecipe")]
+    internal static class CrateMultiCraftShowPatch
+    {
+        private static void Prefix(InventoryGui __instance)
+        {
+            CrateMultiCraft.Apply(__instance, __instance.m_selectedRecipe.Recipe);
+        }
+    }
+
+    [HarmonyPatch(typeof(InventoryGui), "OnCraftPressed")]
+    internal static class CrateMultiCraftPressPatch
+    {
+        private static void Prefix(InventoryGui __instance)
+        {
+            CrateMultiCraft.Apply(__instance, __instance.m_selectedRecipe.Recipe, fresh: true);
         }
     }
 }

@@ -15,17 +15,19 @@ namespace ImmersiveMapper.ShipCargo
         private const string CountKey = "IM_Crate_Count";
         private const string NoTeleportKey = "IM_Crate_NoTeleport";
 
+        // Runs for every item whenever the game weighs or adds one, so it must not allocate: a prefab reference
+        // check, not Object.name (which builds a new string on each call). Not a shared-data reference check either:
+        // an item spawned in the world carries its own copy of the shared data (ItemDrop.Awake only relinks it in the
+        // editor), and keeps it when picked up.
         public static bool IsCrate(ItemDrop.ItemData item)
         {
             if (item == null)
             {
                 return false;
             }
-            // Not a shared-data reference check: an item spawned in the world carries its own copy of the shared
-            // data (ItemDrop.Awake only relinks it in the editor), and keeps it when picked up.
-            if (item.m_dropPrefab != null)
+            if (!ReferenceEquals(item.m_dropPrefab, null))
             {
-                return item.m_dropPrefab.name == CrateSetup.CrateItemName;
+                return ReferenceEquals(item.m_dropPrefab, CrateSetup.CrateItemPrefab);
             }
             return item.m_shared.m_name == CrateSetup.CrateDisplayName;
         }

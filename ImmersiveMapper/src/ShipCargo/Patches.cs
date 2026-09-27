@@ -328,6 +328,46 @@ namespace ImmersiveMapper.ShipCargo
         }
     }
 
+    // A crate riding a ship is part of the ship: a hit on it hits the ship instead. Checked where the hit starts (the
+    // attacker's side) and again where it lands (the crate's owner), in case the two disagree about the riding.
+    [HarmonyPatch(typeof(Destructible), nameof(Destructible.Damage))]
+    internal static class CrateDamagePatch
+    {
+        private static bool Prefix(Destructible __instance, HitData hit)
+        {
+            CargoCrate crate = __instance.GetComponent<CargoCrate>();
+            if (crate == null || !crate.IsRiding)
+            {
+                return true;
+            }
+            Ship ship = crate.Ship;
+            if (ship != null && ship.m_destructible != null)
+            {
+                ship.m_destructible.Damage(hit);
+            }
+            return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(Destructible), "RPC_Damage")]
+    internal static class CrateDamageReceivedPatch
+    {
+        private static bool Prefix(Destructible __instance)
+        {
+            CargoCrate crate = __instance.GetComponent<CargoCrate>();
+            return crate == null || !crate.IsRiding;
+        }
+    }
+
+    [HarmonyPatch(typeof(Ship), "Awake")]
+    internal static class ShipAwakePatch
+    {
+        private static void Postfix(Ship __instance)
+        {
+            ShipKey.Register(__instance);
+        }
+    }
+
     // Loaded ships, for passengers to find their ship again after a reload.
     [HarmonyPatch(typeof(Ship), "OnEnable")]
     internal static class ShipEnablePatch

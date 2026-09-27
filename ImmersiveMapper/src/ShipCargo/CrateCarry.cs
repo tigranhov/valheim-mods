@@ -14,15 +14,15 @@ namespace ImmersiveMapper.ShipCargo
         private static readonly int CarrierUserKey = "IM_CarrierUser".GetStableHashCode();
         private static readonly int CarrierIdKey = "IM_CarrierId".GetStableHashCode();
         private const float CarrierMissingSeconds = 3f;
-        private const float ZdoSyncSeconds = 0.25f;
+        // Every update sends the crate's whole contents to each player nearby; others hold it by its carrier anyway,
+        // so the ZDO position only has to keep up roughly (to be in the right zone, and set down there after a reload).
+        private const float ZdoSyncSeconds = 0.5f;
         private const float SettleProbe = 20f;
         // How quickly (per second) the torso's resting place is re-learned, e.g. when crouching or on a slope.
         private const float BodyRestFollow = 2f;
 
-        private static readonly List<CrateCarry> Instances = new List<CrateCarry>();
-        private static Player _cachedPlayer;
-        private static int _cachedFrame = -1;
-        private static CrateCarry _cachedCrate;
+        // Who carries what, kept as carriers come and go: asked several times a frame (encumbrance, running, IK).
+        private static readonly Dictionary<Player, CrateCarry> ByCarrier = new Dictionary<Player, CrateCarry>();
 
         private ZNetView _nview;
         private CargoCrate _crate;
@@ -50,29 +50,10 @@ namespace ImmersiveMapper.ShipCargo
         /// <summary>The crate itself plus its contents.</summary>
         public float Weight => _passenger != null ? _passenger.Weight : CargoConfig.CrateWeight.Value;
 
-        /// <summary>The crate <paramref name="player"/> is carrying, if any. Cached per frame: this is asked often.</summary>
+        /// <summary>The crate <paramref name="player"/> is carrying, if any.</summary>
         public static CrateCarry CarriedBy(Player player)
         {
-            if (player == null)
-            {
-                return null;
-            }
-            if (player == _cachedPlayer && Time.frameCount == _cachedFrame)
-            {
-                return _cachedCrate;
-            }
-            _cachedPlayer = player;
-            _cachedFrame = Time.frameCount;
-            _cachedCrate = null;
-            foreach (CrateCarry crate in Instances)
-            {
-                if (crate._carrier == player && crate.IsCarried)
-                {
-                    _cachedCrate = crate;
-                    break;
-                }
-            }
-            return _cachedCrate;
+            return player != null && ByCarrier.TryGetValue(player, out CrateCarry crate) ? crate : null;
         }
 
         public static bool IsCarrying(Player player)
@@ -133,13 +114,12 @@ namespace ImmersiveMapper.ShipCargo
             _passenger = GetComponent<ShipPassenger>();
             _colliders = GetComponentsInChildren<Collider>(true);
             _baseScale = transform.localScale;
-            Instances.Add(this);
             Refresh();
         }
 
         private void OnDestroy()
         {
-            Instances.Remove(this);
+            SetCarrier(null);
             ShowHands();
         }
 
@@ -218,7 +198,16 @@ namespace ImmersiveMapper.ShipCargo
 
         private void SetCarrier(Player player)
         {
+            // By reference: a carrier that was just destroyed still has its entry to remove.
+            if (!ReferenceEquals(_carrier, null) && ByCarrier.TryGetValue(_carrier, out CrateCarry carried) && carried == this)
+            {
+                ByCarrier.Remove(_carrier);
+            }
             _carrier = player;
+            if (player != null)
+            {
+                ByCarrier[player] = this;
+            }
             _bodyKnown = false;
             _bodyMotion = Vector3.zero;
         }
@@ -297,7 +286,7 @@ namespace ImmersiveMapper.ShipCargo
             if (p.IsSwimming())
             {
                 p.Message(MessageHud.MessageType.Center, "You dropped the crate in the water");
-                _crate.SpillIntoWater();
+                _crate.MakeLoose(false);
                 return;
             }
             if (p.IsDead() || p.IsTeleporting() || p.IsAttached() || p.InPlaceMode())
@@ -316,7 +305,8 @@ namespace ImmersiveMapper.ShipCargo
             }
         }
 
-        // Straight down onto whatever is below, fitting or not, so a crate is never left hanging in the air.
+        // Straight down onto whatever is below, fitting or not, so a crate is never left hanging in the air; into the
+        // water if that's what is below.
         private void Settle()
         {
             Vector3 center = transform.TransformPoint(CrateShape.Center);
@@ -332,7 +322,7 @@ namespace ImmersiveMapper.ShipCargo
                     return;
                 }
             }
-            _crate.SpillIntoWater();
+            _crate.MakeLoose(false);
         }
 
         // The crate goes where the weapon was.

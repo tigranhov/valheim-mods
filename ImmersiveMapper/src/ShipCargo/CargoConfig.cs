@@ -29,6 +29,7 @@ namespace ImmersiveMapper.ShipCargo
         public static ConfigEntry<int> CrateWidth;
         public static ConfigEntry<int> CrateHeight;
         public static ConfigEntry<float> CrateWeight;
+        public static ConfigEntry<float> CrateHealth;
         public static ConfigEntry<string> CrateRecipe;
         public static ConfigEntry<string> CrateStation;
         public static ConfigEntry<int> CratesAtStation;
@@ -70,6 +71,10 @@ namespace ImmersiveMapper.ShipCargo
                 Synced("Rows of slots inside a crate. Applies after a restart.", new AcceptableValueRange<int>(1, 6)));
             CrateWeight = cfg.Bind("1 - Cargo crates", "EmptyWeight", 20f,
                 Synced("Weight of the crate itself. A packed crate weighs this plus everything inside. Applies after a restart.", new AcceptableValueRange<float>(0f, 100f)));
+            CrateHealth = cfg.Bind("1 - Cargo crates", "Health", 0f,
+                Synced("Hit points of a crate on land or in the water; broken, it spills its contents. Riding a ship it can't be "
+                    + "broken: it's part of the ship, and hits go to the ship. 0 = as sturdy as the shipwreck crates. Applies after a restart.",
+                    new AcceptableValueRange<float>(0f, 5000f)));
             CrateRecipe = cfg.Bind("1 - Cargo crates", "Recipe", "Wood:10,BronzeNails:4",
                 Synced("Ingredients as Item:Amount pairs separated by commas. Applies after a restart."));
             CrateStation = cfg.Bind("1 - Cargo crates", "CraftingStation", "piece_workbench",

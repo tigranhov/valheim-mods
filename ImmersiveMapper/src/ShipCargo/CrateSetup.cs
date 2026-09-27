@@ -10,12 +10,13 @@ using Object = UnityEngine.Object;
 namespace ImmersiveMapper.ShipCargo
 {
     /// <summary>
-    /// Creates the two forms of a cargo crate: the placed crate (a copy of the vanilla shipwreck crate, made static)
-    /// and the crate item it becomes when picked up.
+    /// Creates the forms of a cargo crate: the placed crate (a copy of the vanilla shipwreck crate, made static), the
+    /// same crate afloat (dropped in the water or off a sunken ship), and the crate item it becomes when packed.
     /// </summary>
     internal static class CrateSetup
     {
         public const string CratePrefabName = "IM_CargoCrate";
+        public const string FloatingPrefabName = "IM_CargoCrateAfloat";
         public const string CrateItemName = "IM_CargoCrateItem";
         public const string CrateDisplayName = "Cargo crate";
         // The floating crate a broken ship leaves behind.
@@ -24,6 +25,12 @@ namespace ImmersiveMapper.ShipCargo
         private const string FallbackIconPiece = "piece_chest_wood";
 
         public static GameObject CratePrefab { get; private set; }
+
+        /// <summary>The crate come loose: the vanilla floating crate's physics (floats in water, tumbles on land), our crate's contents.</summary>
+        public static GameObject FloatingPrefab { get; private set; }
+
+        /// <summary>The crate item's prefab; every crate item's m_dropPrefab points at it (ObjectDB holds this same object).</summary>
+        public static GameObject CrateItemPrefab { get; private set; }
 
         private static CustomItem _item;
 
@@ -40,6 +47,7 @@ namespace ImmersiveMapper.ShipCargo
             CratePrefab = CreateCratePrefab();
             if (CratePrefab != null)
             {
+                FloatingPrefab = CreateFloatingPrefab();
                 CreateItem();
             }
         }
@@ -64,20 +72,60 @@ namespace ImmersiveMapper.ShipCargo
             {
                 Object.DestroyImmediate(sync);
             }
-            // Unbreakable: a stray hit shouldn't burst open a crate holding half a base.
-            foreach (Destructible destructible in prefab.GetComponentsInChildren<Destructible>(true))
-            {
-                Object.DestroyImmediate(destructible);
-            }
             foreach (Rigidbody body in prefab.GetComponentsInChildren<Rigidbody>(true))
             {
                 body.isKinematic = true;
                 body.useGravity = false;
             }
 
-            ZNetView nview = prefab.GetComponent<ZNetView>();
-            nview.m_persistent = true;
+            MakeCargoCrate(prefab);
+            MakeBreakable(prefab);
+            UseMovingMaterials(prefab);
+            prefab.AddComponent<ShipPassenger>();
+            prefab.AddComponent<CrateCarry>();
+            prefab.AddComponent<CargoCrate>();
+            CrateShape.Measure(prefab);
+            PrefabManager.Instance.AddPrefab(prefab);
+            return prefab;
+        }
 
+        // Keeps the vanilla crate's floating and its physics sync, so it drifts and bobs like the shipwreck crates.
+        private static GameObject CreateFloatingPrefab()
+        {
+            GameObject prefab = PrefabManager.Instance.CreateClonedPrefab(FloatingPrefabName, VanillaCrate);
+            MakeCargoCrate(prefab);
+            MakeBreakable(prefab);
+            UseMovingMaterials(prefab);
+            prefab.AddComponent<CargoCrate>();
+            PrefabManager.Instance.AddPrefab(prefab);
+            return prefab;
+        }
+
+        // Breakable like the shipwreck crates (while riding a ship the hits go to the ship, see CrateDamagePatch), but
+        // it never breaks by itself, and its contents spill out when it does (Container drops them when destroyed).
+        private static void MakeBreakable(GameObject prefab)
+        {
+            Destructible destructible = prefab.GetComponent<Destructible>();
+            if (destructible == null)
+            {
+                Plugin.Log.LogWarning($"{prefab.name} has no Destructible; it can't be broken.");
+                return;
+            }
+            if (prefab.name == CratePrefabName)
+            {
+                Plugin.Log.LogInfo($"{VanillaCrate} health {destructible.m_health}, min tool tier {destructible.m_minToolTier}, lifetime {destructible.m_ttl} s");
+            }
+            destructible.m_ttl = 0f;
+            if (CargoConfig.CrateHealth.Value > 0f)
+            {
+                destructible.m_health = CargoConfig.CrateHealth.Value;
+            }
+        }
+
+        // Saved with the world, holds a crate's worth of slots, and stays when emptied (it is the crate).
+        private static void MakeCargoCrate(GameObject prefab)
+        {
+            prefab.GetComponent<ZNetView>().m_persistent = true;
             Container container = prefab.GetComponentInChildren<Container>(true);
             container.m_name = CrateDisplayName;
             container.m_width = CargoConfig.CrateWidth.Value;
@@ -86,14 +134,6 @@ namespace ImmersiveMapper.ShipCargo
             container.m_privacy = Container.PrivacySetting.Public;
             container.m_defaultItems = new DropTable();
             container.m_destroyedLootPrefab = null;
-
-            UseMovingMaterials(prefab);
-            prefab.AddComponent<ShipPassenger>();
-            prefab.AddComponent<CrateCarry>();
-            prefab.AddComponent<CargoCrate>();
-            CrateShape.Measure(prefab);
-            PrefabManager.Instance.AddPrefab(prefab);
-            return prefab;
         }
 
         // The vanilla material shades with world-position noise and world-space texture projection, which shimmer on
@@ -153,6 +193,7 @@ namespace ImmersiveMapper.ShipCargo
             shared.m_maxStackSize = 1;
             shared.m_itemType = ItemDrop.ItemData.ItemType.Misc;
             shared.m_teleportable = true;
+            CrateItemPrefab = _item.ItemPrefab;
             ItemManager.Instance.AddItem(_item);
             ApplyRecipeEnabled();
         }
