@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TraderBeacons", "src\Trader
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShipCargo", "src\ShipCargo\ShipCargo.csproj", "{2F41CB3D-FA5E-44B5-A916-1A26C2C4145E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cartographer", "src\Cartographer\Cartographer.csproj", "{F9C99674-F1DF-40C6-89B0-A409575ABA50}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -43,6 +45,18 @@ Global
 		{2F41CB3D-FA5E-44B5-A916-1A26C2C4145E}.Release|x64.Build.0 = Release|Any CPU
 		{2F41CB3D-FA5E-44B5-A916-1A26C2C4145E}.Release|x86.ActiveCfg = Release|Any CPU
 		{2F41CB3D-FA5E-44B5-A916-1A26C2C4145E}.Release|x86.Build.0 = Release|Any CPU
+		{F9C99674-F1DF-40C6-89B0-A409575ABA50}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F9C99674-F1DF-40C6-89B0-A409575ABA50}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F9C99674-F1DF-40C6-89B0-A409575ABA50}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F9C99674-F1DF-40C6-89B0-A409575ABA50}.Debug|x64.Build.0 = Debug|Any CPU
+		{F9C99674-F1DF-40C6-89B0-A409575ABA50}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F9C99674-F1DF-40C6-89B0-A409575ABA50}.Debug|x86.Build.0 = Debug|Any CPU
+		{F9C99674-F1DF-40C6-89B0-A409575ABA50}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F9C99674-F1DF-40C6-89B0-A409575ABA50}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F9C99674-F1DF-40C6-89B0-A409575ABA50}.Release|x64.ActiveCfg = Release|Any CPU
+		{F9C99674-F1DF-40C6-89B0-A409575ABA50}.Release|x64.Build.0 = Release|Any CPU
+		{F9C99674-F1DF-40C6-89B0-A409575ABA50}.Release|x86.ActiveCfg = Release|Any CPU
+		{F9C99674-F1DF-40C6-89B0-A409575ABA50}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -50,5 +64,6 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{AF5510DF-595C-4179-94AA-F09815F5078B} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{2F41CB3D-FA5E-44B5-A916-1A26C2C4145E} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{F9C99674-F1DF-40C6-89B0-A409575ABA50} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

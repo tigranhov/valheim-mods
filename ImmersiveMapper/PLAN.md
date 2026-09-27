@@ -309,11 +309,13 @@ sharing, companion app.
 - **Held like the hammer**, in both hands. **M** (the map key, unused in no-map worlds) takes it
   out / puts it away.
 - **Reading while walking:** the sheet shows while held; you can walk but not run (config to allow
-  running). A key switches to drawing (cursor, field tools).
+  running). A key switches to drawing (cursor, field tools); **drawing stops you** (input blocked).
 - Holds **draft sheets** (field sketches, count in config) and **a copy of one table's master**
   (read-only in the field).
 - **Tally:** counts your paces while the case is anywhere in the inventory (on foot only; not
-  swimming, riding or sailing). Read it on the case's edge while held.
+  swimming, riding or sailing). Read it on the case's edge while held. Two modes (config, user's
+  pick 2026-09-27): **Distance** (default: ground covered, shown as paces of `PaceLength`, a random
+  stride error per leg) or **Footsteps** (every footfall; running strides are longer).
 - **Journal:** end a leg with a key → saves the tally count with your own label ("Leg 3: 412 paces,
   to the river crossing") and starts a new count. No rune-stick items.
 - **Field tools:** charcoal (one thick, rough line), stamps, short text notes, eraser, undo.
@@ -321,6 +323,24 @@ sharing, companion app.
 - Lose the case (death) → drafts and the master copy go with it (tombstone as usual). A new case
   gets the master again at a table.
 - Strokes stored as **vector strokes**, compressed in the item's custom data; stroke/point caps.
+
+**Status (2026-09-27):** step 1 built (`src/Cartographer`), not yet tested in game.
+Keys: M take out / put away (no-map worlds), right-click draw, F next sheet, J end leg; in the
+drawing view Esc or right-click closes, Ctrl+Z undoes. The case is a copy of the hammer with a
+leather tube model made in code; the parchment and pen textures are made in code too (no assets).
+Stamps borrow the game's map pin icons, trader icons and a few item/piece icons.
+
+**Test checklist (Dev profile, test world with no map):**
+1. `devcommands`, `spawn IM_MapCase` (or craft at the workbench: 2 deer hide, 4 leather scraps).
+2. M takes it out: the sheet shows at the bottom, sheet name left, tally right. No attack/block,
+   slow walk only. M again puts it away.
+3. Walk about 100 m: the tally counts (≈125 paces at 0.8 m). Swimming, riding, sitting: no count.
+4. J → label → "Leg 1 noted: N paces", the tally starts again from 0.
+5. Right-click: the drawing view. Charcoal lines, a stamp, a note, the eraser, Ctrl+Z, sheet tabs,
+   the Journal tab (End leg button). Esc / right-click / Done closes; the game menu must not open.
+6. F flips sheets while reading. Put the case in a chest and back, log out and in: all still there.
+7. Config: `FieldDrawing = Everything` → ink + colours; `Tally Mode = Footsteps`; `ReadingPace`.
+8. Hold pose: `9 - Hold tuning` sliders (take it out again to apply). Log: "Hammer children".
 
 ### 3b — Cartography table (taken over)
 - The vanilla table is useless in no-map worlds, so we take over its two action spots (read and
