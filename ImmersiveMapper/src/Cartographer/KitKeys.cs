@@ -7,11 +7,13 @@ namespace ImmersiveMapper.Cartographer
 {
     /// <summary>
     /// The map case's own keys (each player's choice, not synced) and the key hints shown while it's held.
-    /// Drawing uses the block button (right mouse) and putting the case away uses the map button, both vanilla bindings.
+    /// The small map uses the attack button (left mouse), drawing the block button (right mouse) and putting the case
+    /// away the map button, all vanilla bindings.
     /// </summary>
     internal static class KitKeys
     {
         public const string Draw = "Block";
+        public const string Look = "Attack";
         public const string Map = "Map";
 
         public static ButtonConfig FlipSheet;
@@ -47,6 +49,7 @@ namespace ImmersiveMapper.Cartographer
                 Item = MapCaseSetup.ItemName,
                 ButtonConfigs = new[]
                 {
+                    new ButtonConfig { Name = Look, Hint = "Small map" },
                     new ButtonConfig { Name = Draw, Hint = "Draw" },
                     FlipSheet,
                     EndLeg,

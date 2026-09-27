@@ -131,6 +131,11 @@ namespace ImmersiveMapper.Cartographer
                 "Your stamps, in order: names of items, pieces or locations with a map icon (like Vendor_BlackForest), or mark_x, "
                 + "mark_circle, mark_dot. Any vanilla or modded prefab name works. Only changes your own palette: stamps already on a "
                 + "sheet show for everyone.");
+            // A palette nobody edited follows the default as it grows.
+            if (StampPalette.Value == Stamps.FirstDefaultPalette)
+            {
+                StampPalette.Value = Stamps.DefaultPalette;
+            }
 
             const string screen = "4 - Screen";
             ReadingSize = cfg.Bind(screen, "ReadingSize", 0.42f,

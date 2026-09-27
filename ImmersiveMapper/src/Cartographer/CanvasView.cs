@@ -520,7 +520,11 @@ namespace ImmersiveMapper.Cartographer
             image.sprite = sprite;
             image.preserveAspect = true;
             image.raycastTarget = false;
-            image.color = kind.Dim ? new Color(0.9f, 0.87f, 0.82f, 1f) : Color.white;
+            image.color = kind.Tint;
+            if (kind.Outlined)
+            {
+                Ui.AddOutline(image, size * 0.035f);
+            }
             _stampMarks[stamp] = rect;
         }
 

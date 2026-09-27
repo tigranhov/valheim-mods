@@ -325,7 +325,11 @@ namespace ImmersiveMapper.Cartographer
                 icon.sprite = kind.Sprite;
                 icon.preserveAspect = true;
                 icon.raycastTarget = false;
-                icon.color = Color.white;
+                icon.color = kind.Tint;
+                if (kind.Outlined)
+                {
+                    Ui.AddOutline(icon, 1.5f);
+                }
                 button.onClick.AddListener(() => { _tools.StampId = id; Select(ToolKind.Stamp); });
                 _stamps[id] = button;
             }

@@ -60,6 +60,15 @@ namespace ImmersiveMapper.Cartographer
             return text;
         }
 
+        /// <summary>A thin dark outline around an image's art (the map pins, whose art is white).</summary>
+        public static void AddOutline(Graphic graphic, float distance)
+        {
+            var outline = graphic.gameObject.AddComponent<Outline>();
+            outline.effectColor = Stamps.OutlineColor;
+            outline.effectDistance = new Vector2(distance, -distance);
+            outline.useGraphicAlpha = true;
+        }
+
         public static Button Button(string label, Transform parent, Vector2 size)
         {
             GameObject go = GUIManager.Instance.CreateButton(label, parent, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, size.x, size.y);

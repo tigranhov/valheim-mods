@@ -5,7 +5,7 @@ namespace ImmersiveMapper.Cartographer
 {
     /// <summary>
     /// Runs the map case for the local player each frame: the tally, taking the case out and putting it away with the map
-    /// key, the reading view while it's held, and the drawing view on right-click.
+    /// key, the small map on left-click (shown only when asked for), and the drawing view on right-click.
     /// </summary>
     internal static class CaseInHand
     {
@@ -14,6 +14,8 @@ namespace ImmersiveMapper.Cartographer
         private static FieldView _drawing;
         private static bool _closeDrawing;
         private static bool _promptWasOpen;
+        // Taking the case out doesn't cover the screen; left-click shows the small map, and it closes when put away.
+        private static bool _miniOpen;
 
         public static bool IsDrawing => _drawing != null && _drawing.Alive && _drawing.IsOpen;
 
@@ -70,8 +72,11 @@ namespace ImmersiveMapper.Cartographer
                 return;
             }
 
-            _reading.SetVisible(true);
-            _reading.Update(Tally.Paces);
+            _reading.SetVisible(_miniOpen);
+            if (_miniOpen)
+            {
+                _reading.Update(Tally.Paces);
+            }
             if (!player.TakeInput())
             {
                 return;
@@ -80,13 +85,23 @@ namespace ImmersiveMapper.Cartographer
             {
                 player.UseItem(null, _session.Item, true);
             }
+            else if (ZInput.GetButtonDown(KitKeys.Look) || ZInput.GetButtonDown("JoyAttack"))
+            {
+                _miniOpen = !_miniOpen;
+                if (_miniOpen)
+                {
+                    _reading.Show(_session);
+                }
+            }
             else if (DrawPressed())
             {
                 OpenDrawing(player);
             }
             else if (ZInput.GetButtonDown(KitKeys.FlipSheet.Name))
             {
+                // Flipping is asking to look, so it shows the small map.
                 _session.Flip();
+                _miniOpen = true;
                 _reading.Show(_session);
             }
             else if (ZInput.GetButtonDown(KitKeys.EndLeg.Name))
@@ -128,6 +143,10 @@ namespace ImmersiveMapper.Cartographer
         private static void Switch(ItemDrop.ItemData held)
         {
             CloseDrawing();
+            if (held == null || held != _session?.Item)
+            {
+                _miniOpen = false;
+            }
             _session = held != null ? new CaseSession(held) : null;
             if (_reading != null && _reading.Alive)
             {

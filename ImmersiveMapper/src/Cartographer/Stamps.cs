@@ -6,13 +6,25 @@ namespace ImmersiveMapper.Cartographer
 {
     /// <summary>
     /// The stamps a player can press onto a sheet: the game's own icons in their own colours, found by name (an item,
-    /// a piece, or a location that has a map icon, like the traders' camps), plus a few red markers drawn in code.
+    /// a piece, or a location that has a map icon, like the traders' camps), the vanilla map's pin icons (white art,
+    /// shown in red ochre with a dark outline), and a few red markers drawn in code.
     /// A stamp is saved by that name, so any player sees it even if their palette doesn't list it; the palette itself
     /// is each player's own list in the config.
     /// </summary>
     internal static class Stamps
     {
         public const string DefaultPalette =
+            "mark_x, mark_circle, mark_dot, pin_home, pin_fire, pin_hammer, pin_dot, pin_rune, pin_death, pin_bed, pin_boss, "
+            + "bed, fire_pit, piece_workbench, Karve, "
+            + "Vendor_BlackForest, Hildir_camp, BogWitch_Camp, "
+            + "TrophyEikthyr, TrophyTheElder, TrophyBonemass, TrophyDragonQueen, TrophyGoblinKing, TrophySeekerQueen, TrophyFader, "
+            + "TrophySkeleton, TrophyDraugr, TrophyFrostTroll, TrophyGoblin, TrophyCultist, TrophyWolf, TrophySerpent, TrophyDeathsquito, "
+            + "CopperOre, TinOre, IronScrap, SilverOre, BlackMetalScrap, Obsidian, Tar, Crystal, "
+            + "Raspberry, Blueberries, Cloudberry, MushroomYellow, Thistle, Flax, Barley, FineWood, ElderBark, YggdrasilWood, "
+            + "Coins, SurtlingCore";
+
+        /// <summary>The default before the map pins were added; a palette still set to it gets the new default.</summary>
+        public const string FirstDefaultPalette =
             "mark_x, mark_circle, mark_dot, bed, fire_pit, piece_workbench, Karve, "
             + "Vendor_BlackForest, Hildir_camp, BogWitch_Camp, "
             + "TrophyEikthyr, TrophyTheElder, TrophyBonemass, TrophyDragonQueen, TrophyGoblinKing, TrophySeekerQueen, TrophyFader, "
@@ -21,33 +33,52 @@ namespace ImmersiveMapper.Cartographer
             + "Raspberry, Blueberries, Cloudberry, MushroomYellow, Thistle, Flax, Barley, FineWood, ElderBark, YggdrasilWood, "
             + "Coins, SurtlingCore";
 
+        /// <summary>The vanilla map's pin icons, by stamp id.</summary>
+        private static readonly Dictionary<string, (Minimap.PinType Type, string Name)> Pins = new Dictionary<string, (Minimap.PinType, string)>
+        {
+            { "pin_home", (Minimap.PinType.Icon1, "House") },
+            { "pin_fire", (Minimap.PinType.Icon0, "Fire") },
+            { "pin_hammer", (Minimap.PinType.Icon2, "Hammer") },
+            { "pin_dot", (Minimap.PinType.Icon3, "Point") },
+            { "pin_rune", (Minimap.PinType.Icon4, "Rune") },
+            { "pin_death", (Minimap.PinType.Death, "Skull") },
+            { "pin_bed", (Minimap.PinType.Bed, "Bed") },
+            { "pin_boss", (Minimap.PinType.Boss, "Boss") },
+        };
+
         public sealed class Kind
         {
             public readonly string Id;
             public readonly string Name;
             public readonly Sprite Sprite;
-            /// <summary>The game's icons are dimmed a little so they sit on the parchment; the drawn markers aren't.</summary>
-            public readonly bool Dim;
+            /// <summary>Colour the art is shown in: the game's icons are dimmed a little so they sit on the parchment.</summary>
+            public readonly Color Tint;
+            /// <summary>Drawn with a thin dark outline (the map pins, so white art reads on parchment).</summary>
+            public readonly bool Outlined;
 
-            public Kind(string id, string name, Sprite sprite, bool dim)
+            public Kind(string id, string name, Sprite sprite, Color tint, bool outlined = false)
             {
                 Id = id;
                 Name = name;
                 Sprite = sprite;
-                Dim = dim;
+                Tint = tint;
+                Outlined = outlined;
             }
         }
 
-        // The first test builds saved these ids; they now show the matching game icon.
+        public static readonly Color OutlineColor = new Color(0.16f, 0.1f, 0.06f, 0.85f);
+        private static readonly Color GameIconTint = new Color(0.9f, 0.87f, 0.82f, 1f);
+
+        // The first test builds saved these ids; they now show the matching map pin or game icon.
         private static readonly Dictionary<string, string> OldIds = new Dictionary<string, string>
         {
-            { "home", "bed" },
-            { "camp", "fire_pit" },
-            { "point", "mark_dot" },
-            { "work", "piece_workbench" },
-            { "rune", "mark_circle" },
-            { "danger", "mark_x" },
-            { "boss", "TrophyEikthyr" },
+            { "home", "pin_home" },
+            { "camp", "pin_fire" },
+            { "point", "pin_dot" },
+            { "work", "pin_hammer" },
+            { "rune", "pin_rune" },
+            { "danger", "pin_death" },
+            { "boss", "pin_boss" },
             { "trader", "Vendor_BlackForest" },
             { "hildir", "Hildir_camp" },
             { "bogwitch", "BogWitch_Camp" },
@@ -132,11 +163,16 @@ namespace ImmersiveMapper.Cartographer
             switch (id)
             {
                 case "mark_x":
-                    return new Kind(id, "Cross", Marker(DrawCross), false);
+                    return new Kind(id, "Cross", Marker(DrawCross), Color.white);
                 case "mark_circle":
-                    return new Kind(id, "Circle", Marker(DrawRing), false);
+                    return new Kind(id, "Circle", Marker(DrawRing), Color.white);
                 case "mark_dot":
-                    return new Kind(id, "Dot", Marker(DrawDot), false);
+                    return new Kind(id, "Dot", Marker(DrawDot), Color.white);
+            }
+            if (Pins.TryGetValue(id, out var pin))
+            {
+                Sprite art = Minimap.instance != null ? Minimap.instance.GetSprite(pin.Type) : null;
+                return art != null ? new Kind(id, pin.Name, art, MarkerColor, true) : null;
             }
             if (Minimap.instance != null)
             {
@@ -144,7 +180,7 @@ namespace ImmersiveMapper.Cartographer
                 {
                     if (icon.m_name == id && icon.m_icon != null)
                     {
-                        return new Kind(id, PlaceNames.TryGetValue(id, out string place) ? place : id, icon.m_icon, true);
+                        return new Kind(id, PlaceNames.TryGetValue(id, out string place) ? place : id, icon.m_icon, GameIconTint);
                     }
                 }
             }
@@ -152,13 +188,13 @@ namespace ImmersiveMapper.Cartographer
             ItemDrop drop = item != null ? item.GetComponent<ItemDrop>() : null;
             if (drop != null && drop.m_itemData.GetIcon() != null)
             {
-                return new Kind(id, Localized(drop.m_itemData.m_shared.m_name, id), drop.m_itemData.GetIcon(), true);
+                return new Kind(id, Localized(drop.m_itemData.m_shared.m_name, id), drop.m_itemData.GetIcon(), GameIconTint);
             }
             GameObject prefab = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab(id) : null;
             Piece piece = prefab != null ? prefab.GetComponent<Piece>() : null;
             if (piece != null && piece.m_icon != null)
             {
-                return new Kind(id, Localized(piece.m_name, id), piece.m_icon, true);
+                return new Kind(id, Localized(piece.m_name, id), piece.m_icon, GameIconTint);
             }
             return null;
         }
