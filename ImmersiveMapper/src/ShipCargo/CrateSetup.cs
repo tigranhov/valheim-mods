@@ -64,6 +64,11 @@ namespace ImmersiveMapper.ShipCargo
             {
                 Object.DestroyImmediate(sync);
             }
+            // Unbreakable: a stray hit shouldn't burst open a crate holding half a base.
+            foreach (Destructible destructible in prefab.GetComponentsInChildren<Destructible>(true))
+            {
+                Object.DestroyImmediate(destructible);
+            }
             foreach (Rigidbody body in prefab.GetComponentsInChildren<Rigidbody>(true))
             {
                 body.isKinematic = true;

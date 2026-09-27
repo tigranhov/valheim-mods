@@ -163,15 +163,35 @@ namespace ImmersiveMapper.ShipCargo
     {
         private static void Prefix(GameObject go)
         {
-            if (go == null || go.GetComponent<Ship>() == null)
+            Ship ship = go != null ? go.GetComponent<Ship>() : null;
+            if (ship == null)
             {
                 return;
             }
             ZNetView nview = go.GetComponent<ZNetView>();
             if (nview != null && nview.GetZDO() != null && nview.IsOwner())
             {
-                ShipPassenger.NotifyShipDestroyed(nview.GetZDO().m_uid);
+                ShipPassenger.NotifyShipDestroyed(ship);
             }
+        }
+    }
+
+    // Loaded ships, for passengers to find their ship again after a reload.
+    [HarmonyPatch(typeof(Ship), "OnEnable")]
+    internal static class ShipEnablePatch
+    {
+        private static void Postfix(Ship __instance)
+        {
+            ShipPassenger.ShipLoaded(__instance);
+        }
+    }
+
+    [HarmonyPatch(typeof(Ship), "OnDisable")]
+    internal static class ShipDisablePatch
+    {
+        private static void Postfix(Ship __instance)
+        {
+            ShipPassenger.ShipUnloaded(__instance);
         }
     }
 }

@@ -10,45 +10,72 @@ namespace ImmersiveMapper.ShipCargo
     /// parented to the ship: a networked child is destroyed along with its parent when the ship's area unloads,
     /// which leaves ZNetScene holding a dead instance.
     ///
-    /// The ship link is a ZDO "SyncTransform" connection, the same one used for players standing on ships: the game
-    /// saves it as a hash pair and re-links it on world load (ZDOMan.ConnectSyncTransforms), since ZDO ids change.
+    /// The passenger stores no ship id. ZDO ids change when a world loads, and the game's saved links
+    /// (ZDO connections) keep only one link per target, so several crates on one ship would lose all but one.
+    /// Instead it stores its offset on the deck, and finds its ship again by that offset: the loaded ship whose
+    /// deck has this passenger sitting exactly there. The owner keeps the passenger's ZDO position close behind
+    /// the ship so that match holds after a reload.
     /// </summary>
     internal sealed class ShipPassenger : MonoBehaviour
     {
         private const string ShipLostRpc = "IM_ShipLost";
-        private const float ZdoSyncSeconds = 1f;
-        private const float ShipCheckSeconds = 5f;
+        // How far off the stored deck offset a ship may be and still be recognized as this passenger's ship.
+        private const float MatchTolerance = 3f;
+        private const float MatchRetrySeconds = 0.5f;
+        // Give up on a ship that hasn't shown up for this long (it's gone, e.g. destroyed while unloaded).
+        private const float LostAfterSeconds = 60f;
+        // The owner writes the ZDO position when the passenger has moved this far, at most every ZdoSyncSeconds.
+        private const float ZdoSyncDistance = 0.25f;
+        private const float ZdoSyncAngle = 2f;
+        private const float ZdoSyncSeconds = 0.1f;
+
+        private static readonly int OnShipKey = "IM_OnShip".GetStableHashCode();
         private static readonly int LocalPosKey = "IM_ShipLocalPos".GetStableHashCode();
         private static readonly int LocalRotKey = "IM_ShipLocalRot".GetStableHashCode();
 
         private static readonly List<ShipPassenger> Instances = new List<ShipPassenger>();
+        private static readonly HashSet<Ship> LoadedShips = new HashSet<Ship>();
 
-        /// <summary>Raised on the passenger's owner once its ship is gone for good. The link is already cleared.</summary>
+        /// <summary>Raised on the passenger's owner when its ship sank or was destroyed. It no longer rides.</summary>
         public event Action ShipLost;
 
         private ZNetView _nview;
         private Collider[] _colliders;
-        private ZDOID _shipId = ZDOID.None;
+        private bool _onShip;
         private Vector3 _localPos;
         private Quaternion _localRot = Quaternion.identity;
-        private Transform _ship;
+        private Ship _ship;
         private readonly List<Collider> _ignoring = new List<Collider>();
         private uint _revision = uint.MaxValue;
-        private float _zdoTimer;
-        private float _checkTimer;
+        private float _matchTimer;
+        private float _missingFor;
+        private float _syncTimer;
+        private Vector3 _syncedPos;
+        private Quaternion _syncedRot;
 
-        public bool IsAttached => !_shipId.IsNone();
+        public bool IsAttached => _onShip;
 
         /// <summary>The ship this rides on, if it's loaded here.</summary>
-        public Ship CurrentShip => _ship != null ? _ship.GetComponent<Ship>() : null;
+        public Ship CurrentShip => _ship;
 
-        public static void NotifyShipDestroyed(ZDOID shipId)
+        public static void ShipLoaded(Ship ship)
+        {
+            LoadedShips.Add(ship);
+        }
+
+        public static void ShipUnloaded(Ship ship)
+        {
+            LoadedShips.Remove(ship);
+        }
+
+        /// <summary>The ship is really being destroyed (not just unloaded): its passengers go into the water.</summary>
+        public static void NotifyShipDestroyed(Ship ship)
         {
             foreach (ShipPassenger passenger in Instances.ToArray())
             {
-                if (passenger._shipId == shipId)
+                if (passenger._ship == ship)
                 {
-                    passenger.RequestShipLost();
+                    passenger._nview.InvokeRPC(ShipLostRpc);
                 }
             }
         }
@@ -75,8 +102,7 @@ namespace ImmersiveMapper.ShipCargo
         /// <summary>Starts riding <paramref name="ship"/> at the current pose. Owner only.</summary>
         public void AttachTo(Ship ship)
         {
-            ZNetView shipView = ship.GetComponent<ZNetView>();
-            if (!_nview.IsOwner() || shipView == null || shipView.GetZDO() == null)
+            if (!_nview.IsOwner())
             {
                 return;
             }
@@ -84,24 +110,25 @@ namespace ImmersiveMapper.ShipCargo
             ZDO zdo = _nview.GetZDO();
             zdo.Set(LocalPosKey, t.InverseTransformPoint(transform.position));
             zdo.Set(LocalRotKey, Quaternion.Inverse(t.rotation) * transform.rotation);
-            zdo.SetConnection(ZDOExtraData.ConnectionType.SyncTransform, shipView.GetZDO().m_uid);
+            zdo.Set(OnShipKey, true);
+            SyncZdoPose(zdo);
             Refresh();
+            SetShip(ship);
         }
 
-        private void RequestShipLost()
+        private void Detach()
         {
-            // Goes to the owner.
-            _nview.InvokeRPC(ShipLostRpc);
+            _nview.GetZDO().Set(OnShipKey, false);
+            Refresh();
         }
 
         private void RPC_ShipLost(long sender)
         {
-            if (!_nview.IsOwner() || !IsAttached)
+            if (!_nview.IsOwner() || !_onShip)
             {
                 return;
             }
-            _nview.GetZDO().UpdateConnection(ZDOExtraData.ConnectionType.SyncTransform, ZDOID.None);
-            Refresh();
+            Detach();
             ShipLost?.Invoke();
         }
 
@@ -109,12 +136,14 @@ namespace ImmersiveMapper.ShipCargo
         {
             ZDO zdo = _nview.GetZDO();
             _revision = zdo.DataRevision;
+            // Crates placed by the first build have the offset but no flag.
+            bool onShip = zdo.GetBool(OnShipKey, zdo.GetVec3(LocalPosKey, out _));
             _localPos = zdo.GetVec3(LocalPosKey, Vector3.zero);
             _localRot = zdo.GetQuaternion(LocalRotKey, Quaternion.identity);
-            ZDOID ship = zdo.GetConnectionZDOID(ZDOExtraData.ConnectionType.SyncTransform);
-            if (ship != _shipId)
+            if (onShip != _onShip)
             {
-                _shipId = ship;
+                _onShip = onShip;
+                _missingFor = 0f;
                 SetShip(null);
             }
         }
@@ -122,7 +151,7 @@ namespace ImmersiveMapper.ShipCargo
         private void LateUpdate()
         {
             ZDO zdo = _nview.GetZDO();
-            if (zdo == null || ZNetScene.instance == null)
+            if (zdo == null)
             {
                 return;
             }
@@ -130,56 +159,90 @@ namespace ImmersiveMapper.ShipCargo
             {
                 Refresh();
             }
-            if (!IsAttached)
+            if (!_onShip)
             {
                 return;
             }
-            if (_ship == null)
+            if (_ship == null && !FindShip(zdo))
             {
-                GameObject found = ZNetScene.instance.FindInstance(_shipId);
-                if (found == null)
-                {
-                    CheckShipGone();
-                    return;
-                }
-                SetShip(found.transform);
+                return;
             }
-            transform.SetPositionAndRotation(_ship.TransformPoint(_localPos), _ship.rotation * _localRot);
-            // The owner keeps the ZDO's position following the ship, so the passenger loads and unloads with it.
+            Transform ship = _ship.transform;
+            transform.SetPositionAndRotation(ship.TransformPoint(_localPos), ship.rotation * _localRot);
             if (_nview.IsOwner())
             {
-                _zdoTimer += Time.deltaTime;
-                if (_zdoTimer >= ZdoSyncSeconds)
+                _syncTimer += Time.deltaTime;
+                if (_syncTimer >= ZdoSyncSeconds
+                    && ((transform.position - _syncedPos).sqrMagnitude > ZdoSyncDistance * ZdoSyncDistance
+                        || Quaternion.Angle(transform.rotation, _syncedRot) > ZdoSyncAngle))
                 {
-                    _zdoTimer = 0f;
-                    zdo.SetPosition(transform.position);
-                    zdo.SetRotation(transform.rotation);
+                    SyncZdoPose(zdo);
                 }
             }
         }
 
-        // The server has every ZDO, so only it can tell "ship destroyed" apart from "ship not loaded here yet".
-        private void CheckShipGone()
+        private void SyncZdoPose(ZDO zdo)
         {
-            _checkTimer += Time.deltaTime;
-            if (_checkTimer < ShipCheckSeconds)
+            _syncTimer = 0f;
+            _syncedPos = transform.position;
+            _syncedRot = transform.rotation;
+            zdo.SetPosition(_syncedPos);
+            zdo.SetRotation(_syncedRot);
+        }
+
+        // Look for the loaded ship whose deck has this passenger at its stored offset. Compares saved (ZDO) poses
+        // on both sides, which were written together when the world was saved.
+        private bool FindShip(ZDO zdo)
+        {
+            _matchTimer -= Time.deltaTime;
+            if (_matchTimer > 0f)
             {
-                return;
+                return false;
             }
-            _checkTimer = 0f;
-            if (ZNet.instance == null || !ZNet.instance.IsServer() || ZDOMan.instance.GetZDO(_shipId) != null)
+            _matchTimer = MatchRetrySeconds;
+            Vector3 position = zdo.GetPosition();
+            Ship best = null;
+            float bestError = MatchTolerance;
+            foreach (Ship ship in LoadedShips)
             {
-                return;
+                ZNetView view = ship != null ? ship.GetComponent<ZNetView>() : null;
+                ZDO shipZdo = view != null ? view.GetZDO() : null;
+                if (shipZdo == null)
+                {
+                    continue;
+                }
+                Vector3 offset = Quaternion.Inverse(shipZdo.GetRotation()) * (position - shipZdo.GetPosition());
+                float error = Vector3.Distance(offset, _localPos);
+                if (error < bestError)
+                {
+                    bestError = error;
+                    best = ship;
+                }
             }
-            if (!_nview.HasOwner())
+            if (best != null)
             {
-                _nview.ClaimOwnership();
+                _missingFor = 0f;
+                SetShip(best);
+                return true;
             }
-            RequestShipLost();
+            _missingFor += MatchRetrySeconds;
+            if (_missingFor >= LostAfterSeconds && _nview.IsOwner())
+            {
+                GiveUpOnShip();
+            }
+            return false;
+        }
+
+        // The ship never showed up. Stop riding and stay put, so the crate can simply be picked up. Cargo only
+        // spills when a ship is seen being destroyed, never on a guess.
+        private void GiveUpOnShip()
+        {
+            Plugin.Log.LogInfo($"{name}: no matching ship within {LostAfterSeconds:0} s; it no longer rides a ship.");
+            Detach();
         }
 
         // Riding on a ship means overlapping its colliders: without this the ship would be shoved by its own cargo.
-        private void SetShip(Transform ship)
+        private void SetShip(Ship ship)
         {
             foreach (Collider shipCollider in _ignoring)
             {
