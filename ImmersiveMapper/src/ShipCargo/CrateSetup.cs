@@ -87,11 +87,48 @@ namespace ImmersiveMapper.ShipCargo
             container.m_defaultItems = new DropTable();
             container.m_destroyedLootPrefab = null;
 
+            UseMovingMaterials(prefab);
             prefab.AddComponent<ShipPassenger>();
             prefab.AddComponent<CargoCrate>();
             CrateShape.Measure(prefab);
             PrefabManager.Instance.AddPrefab(prefab);
             return prefab;
+        }
+
+        // The vanilla material shades with world-position noise and world-space texture projection, which shimmer on
+        // anything that moves (like a crate riding a ship). The game's build ghosts turn both off the same way
+        // (Player.CleanupGhostMaterials). Copies, so the vanilla floating crate keeps its own material.
+        private static void UseMovingMaterials(GameObject prefab)
+        {
+            var copies = new Dictionary<Material, Material>();
+            foreach (Renderer renderer in prefab.GetComponentsInChildren<Renderer>(true))
+            {
+                Material[] materials = renderer.sharedMaterials;
+                for (int i = 0; i < materials.Length; i++)
+                {
+                    Material source = materials[i];
+                    if (source == null)
+                    {
+                        continue;
+                    }
+                    if (!copies.TryGetValue(source, out Material copy))
+                    {
+                        copy = new Material(source) { name = source.name + " (IM moving)" };
+                        if (copy.HasProperty("_ValueNoise"))
+                        {
+                            copy.SetFloat("_ValueNoise", 0f);
+                        }
+                        if (copy.HasProperty("_TriplanarLocalPos"))
+                        {
+                            copy.SetFloat("_TriplanarLocalPos", 1f);
+                        }
+                        copies[source] = copy;
+                        Plugin.Log.LogInfo($"Crate material {source.name} / {source.shader.name}: value noise {(source.HasProperty("_ValueNoise") ? "off" : "n/a")}, local triplanar {(source.HasProperty("_TriplanarLocalPos") ? "on" : "n/a")}");
+                    }
+                    materials[i] = copy;
+                }
+                renderer.sharedMaterials = materials;
+            }
         }
 
         private static void CreateItem()

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -26,6 +27,7 @@ namespace ImmersiveMapper.ShipCargo
         private static readonly int ColorId = Shader.PropertyToID("_Color");
         private static readonly int EmissionId = Shader.PropertyToID("_EmissionColor");
         private static readonly Collider[] Overlaps = new Collider[32];
+        private static readonly HashSet<string> LoggedShips = new HashSet<string>();
 
         private static CrateGhost _instance;
         private static int _mask;
@@ -186,6 +188,7 @@ namespace ImmersiveMapper.ShipCargo
             }
             _ghost.transform.SetPositionAndRotation(_position, _rotation);
             _valid = Fits();
+            LogShipColliders(_ship);
             if (_valid == _tintedInvalid)
             {
                 SetTint(!_valid);
@@ -270,8 +273,9 @@ namespace ImmersiveMapper.ShipCargo
             int count = Physics.OverlapBoxNonAlloc(center, CrateShape.Size * (0.5f * OverlapShrink), Overlaps, _rotation, _mask, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < count; i++)
             {
-                // The ship's own colliders may enclose the deck space, so only other objects count against it.
-                if (_ship == null || Overlaps[i].GetComponentInParent<Ship>() != _ship)
+                // A ship's buoyancy box encloses its whole hull; its walls, rails and mast do count.
+                Ship owner = Overlaps[i].GetComponentInParent<Ship>();
+                if (owner == null || Overlaps[i] != owner.m_floatCollider)
                 {
                     return false;
                 }
@@ -287,6 +291,28 @@ namespace ImmersiveMapper.ShipCargo
             }
             float water = ZoneSystem.instance != null ? ZoneSystem.instance.m_waterLevel : 30f;
             return _ship != null || support.point.y >= water - WaterMargin;
+        }
+
+        // Diagnostics, once per ship type: which colliders the clipping check sees on it.
+        private static void LogShipColliders(Ship ship)
+        {
+            if (ship == null)
+            {
+                return;
+            }
+            string type = Utils.GetPrefabName(ship.gameObject);
+            if (!LoggedShips.Add(type))
+            {
+                return;
+            }
+            var parts = new List<string>();
+            foreach (Collider c in ship.GetComponentsInChildren<Collider>())
+            {
+                string kind = c is MeshCollider mesh ? (mesh.convex ? "convex mesh" : "mesh") : c.GetType().Name;
+                string role = c == ship.m_floatCollider ? ", float" : c.isTrigger ? ", trigger" : "";
+                parts.Add($"{c.name} ({kind}, {LayerMask.LayerToName(c.gameObject.layer)}{role}, {c.bounds.size.x:0.0}x{c.bounds.size.y:0.0}x{c.bounds.size.z:0.0})");
+            }
+            Plugin.Log.LogInfo($"{type} colliders: {string.Join("; ", parts)}");
         }
 
         private void SetTint(bool invalid)
