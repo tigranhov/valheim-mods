@@ -65,6 +65,9 @@ Build order: **1. Trader Beacons → 2. Cargo Lashing (+ Packing Crates) → 3. 
   fittings; field notes in the case, fair copy at the vanilla cartography table (taken over, one
   master per table, the case's copy refreshes only at the table); upgrades are parts fitted into the
   case. Answers the open question on instruments: held, like the hammer.
+- 2026-09-27 — Cartographer step 2 (table) decided: either action spot opens the table, one player at
+  a time, the master grows as you draw, drafts are laid over it and aligned (two-point fit), copied as
+  is or traced (both built to compare), then wiped; copying is free; colours only at the table.
 
 ### Repo layout (planned)
 ```
@@ -353,8 +356,23 @@ Stamps borrow the game's map pin icons, trader icons and a few item/piece icons.
   (a journal leg becomes a string of true length: pin one end, swing it to where you remember
   going); **two-point fix** (mark two places, enter the real distance → rescale the sketch);
   **trace and copy** a draft onto the master (costs parchment/ink).
-- Details to settle in step 2: copying a case's master onto a new table, moving drafts onto the
-  master, who may edit (ward access like vanilla).
+- **Decided 2026-09-27 (step 2):**
+  - E on either action spot opens the table view (master, your case's drafts, all tools). Ward
+    access as vanilla. **One player at a time** ("Someone is working at the table").
+  - The master **grows as you draw** (no fixed size); zoom and pan (also on drafts in the field).
+  - **Drafts onto the master:** lay a draft over the master like tracing paper (see-through), move /
+    rotate / resize it, or **two-point fit** (two spots on the draft, the same two on the master).
+    Then **copy as is** or **trace** (lines come over as faint guides to ink over, then clear); both
+    get built so the user can compare in game. A copied draft is **wiped**. Copying is **free**.
+  - Journal legs become **measuring strings** at the master's scale (one square = N paces).
+  - Tools: charcoal, quill (ink colours), **wash brush** (wide, see-through, under the lines) and
+    **area fill** (draw an outline, it fills) with named biome swatches (Meadows light green, Black
+    Forest dark green, Swamp olive brown, Mountain chalk white, Plains ochre, Mistlands grey-violet,
+    Ashlands red-black, Deep North ice blue, Ocean woad blue); dotted and straight lines; text and
+    stamps in two sizes; brush sizes fine / medium / broad. Nothing is ever coloured for you.
+  - **Drafts stay rough:** colours only at the table (FieldDrawing=Everything allows all in the field).
+  - The case's master copy refreshes when you leave a table that has a master; at an empty table
+    you can lay your case's copy onto it (to start an outpost's map).
 
 ### 3c — Ship fittings
 - **Log line:** attach to a ship's stern (the item is used up). A rope trails behind the ship.
