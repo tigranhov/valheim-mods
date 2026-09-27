@@ -108,15 +108,15 @@ namespace ImmersiveMapper.ShipCargo
             BodyFollow = cfg.Bind(tuning, "BodyFollow", 1f,
                 Synced("How much the crate and hands move with the torso as you walk. 1: fully, so the elbows stay steady; "
                     + "0: the crate stays level and the elbows bend with each step.", new AcceptableValueRange<float>(0f, 1.5f)));
-            HandInset = cfg.Bind(tuning, "HandInset", -0.023f,
+            HandInset = cfg.Bind(tuning, "HandInset", -0.017f,
                 Synced("Meters the hands reach in from the crate's sides (negative: hands further out).", new AcceptableValueRange<float>(-0.3f, 0.3f)));
-            HandHeight = cfg.Bind(tuning, "HandHeight", -0.151f,
+            HandHeight = cfg.Bind(tuning, "HandHeight", -0.09f,
                 Synced("Meters above (or, negative, below) the crate's middle that the hands grip.", new AcceptableValueRange<float>(-0.5f, 0.5f)));
             HandForward = cfg.Bind(tuning, "HandForward", -0.209f,
                 Synced("Meters toward the far side (or, negative, the near side) of the crate that the hands grip.", new AcceptableValueRange<float>(-0.5f, 0.5f)));
             HandRotationWeight = cfg.Bind(tuning, "HandRotationWeight", 1f,
                 Synced("How firmly the wrists are held to the grip angle below (0: the walk animation turns them freely).", new AcceptableValueRange<float>(0f, 1f)));
-            HandPitch = cfg.Bind(tuning, "HandPitch", 107.7f,
+            HandPitch = cfg.Bind(tuning, "HandPitch", 154.5f,
                 Synced("Degrees to tip the hands' grip up or down.", new AcceptableValueRange<float>(-180f, 180f)));
             HandYaw = cfg.Bind(tuning, "HandYaw", -13f,
                 Synced("Degrees to turn the fingers inward or outward.", new AcceptableValueRange<float>(-180f, 180f)));
