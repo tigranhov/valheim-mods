@@ -31,6 +31,10 @@
       <HintPath>$(ValheimManaged)\assembly_utils.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="assembly_guiutils" Publicize="true">
+      <HintPath>$(ValheimManaged)\assembly_guiutils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="SoftReferenceableAssets">
       <HintPath>$(ValheimManaged)\SoftReferenceableAssets.dll</HintPath>
       <Private>false</Private>

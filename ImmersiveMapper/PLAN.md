@@ -31,7 +31,7 @@ Build order: **1. Trader Beacons → 2. Cargo Lashing (+ Packing Crates) → 3. 
 | .NET SDKs | 6.0, 8.0, 9.0 installed; plugins target .NET Framework (net462, verify vs Jötunn stub) |
 | Mod manager | Thunderstore Mod Manager |
 | Dev/test profile | **New clean `Dev` profile** (BepInExPack + Jötunn + our mods only) |
-| Multiplayer | **Dedicated server the user controls** → our mods get installed on the server too |
+| Multiplayer | Single player or a player-hosted world; **dedicated server not a focus** (may not run one) |
 | Real play profile | Not decided — ask user before targeting any existing profile (Immers, Default, …) |
 
 ### Decision log
@@ -56,6 +56,8 @@ Build order: **1. Trader Beacons → 2. Cargo Lashing (+ Packing Crates) → 3. 
   the haze stays as if 100 m away. The impostor mode is no longer needed (candidate for removal).
 - 2026-09-27 — Impostor removed (DistantView, DrawMode, ImpostorDistance). FogAsIfMeters default
   500 at first, then 300 (user's pick). First git commit.
+- 2026-09-27 — Dedicated server is not a focus (user may not run one). Mods stay multiplayer-safe
+  (server logic also runs on a player-hosted game), but no server deployment work.
 - 2026-09-27 — Milestone 2 becomes "Ship Cargo": cargo crates (user's idea, based on the crates a
   broken ship leaves behind) + cart lashing, each switchable. See Milestone 2 for details.
 
@@ -89,7 +91,7 @@ and the Bog Witch (Swamp, ~3–8 km from center) is pure luck. Vanilla only reve
 **Idea:** traders notice travellers from afar and signal them — in-world, visible, not a pin.
 
 **Status (2026-09-27):** v0.1 works in single player (Dev profile): smoke visible far away, drawn at
-the real spot. Remaining: real-camp test, night look, install on the dedicated server.
+the real spot. Remaining: real-camp test, night look.
 
 **In-game test checklist (Dev profile, a throwaway test world):**
 1. ✅ `tb_test` smoke visible from far away, drawn at the real spot.
@@ -191,6 +193,27 @@ physically fits. A packed crate can't go into carts, ship holds or chests.
   look to reuse for our crate.
 
 ### v0.1 — Cargo crates
+**Status (2026-09-27):** written and compiling (`src/ShipCargo`), not yet tested in game.
+Design notes from the code research:
+- The crate's contents travel in the item's custom data as the exact bytes the placed crate saved
+  (`ZDOVars.s_items`); weight/count summaries alongside.
+- Riding a ship is **not** Unity parenting (a networked child dies with its parent when the area
+  unloads, leaving a dead instance in ZNetScene). Every client places the crate at a fixed offset
+  from its own copy of the ship each frame; crate↔ship collisions are ignored; the owner moves the
+  ZDO along so the crate loads with the ship. Link = `SyncTransform` connection (survives reloads).
+- Known limit: standing *on top of* a crate while sailing doesn't carry you (the deck does).
+- Ship destroyed → crate contents + the empty crate go into vanilla floating `CargoCrate`s.
+
+**Test checklist (Dev profile, test world):**
+1. `devcommands`, `spawn IM_CargoCrateItem` (or craft at a workbench: 10 wood, 4 bronze nails).
+2. Right-click the crate in the inventory → it's set down in front of you. E opens, fill it.
+3. Shift+E picks it up → one heavy item; tooltip shows contents. Right-click again to set it down.
+4. Try putting the packed crate in a chest / cart → "A packed crate can't go in there".
+5. `spawn Karve` in water, board it, set a crate down on the deck, sail: it must not move or slide.
+6. Log out and back in: the crate is still on the deck at the same spot.
+7. Destroy the ship: cargo + the empty crate float away in vanilla floating crates.
+8. Log: "CargoCrate components" and "collider layers" lines (layer decides player collision/stacking).
+
 - Craftable crate (looks like the vanilla shipwreck crate), with its own slots (config).
 - Place it on the ground or on a ship deck. **On a deck it rides the ship**: never slides, never
   falls off, synced for every player.
