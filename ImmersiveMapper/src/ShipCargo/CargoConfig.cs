@@ -13,6 +13,17 @@ namespace ImmersiveMapper.ShipCargo
         Front,
     }
 
+    /// <summary>When carrying a crate makes you encumbered.</summary>
+    internal enum CarryEncumbrance
+    {
+        /// <summary>When your inventory plus the crate and its contents weigh more than you can carry.</summary>
+        Weight,
+        /// <summary>Always, even for an empty crate.</summary>
+        Always,
+        /// <summary>Never; only the inventory counts, as usual.</summary>
+        Never,
+    }
+
     /// <summary>All settings are admin-only and synced from the server, so every player's crates behave the same.</summary>
     internal static class CargoConfig
     {
@@ -31,7 +42,19 @@ namespace ImmersiveMapper.ShipCargo
         public static ConfigEntry<float> WeightStrength;
 
         public static ConfigEntry<CarryMode> PickUpMode;
-        public static ConfigEntry<bool> CarryEncumbers;
+        public static ConfigEntry<CarryEncumbrance> Encumbrance;
+
+        public static ConfigEntry<float> FrontScale;
+        public static ConfigEntry<float> FrontHeight;
+        public static ConfigEntry<float> FrontDistance;
+        public static ConfigEntry<float> FrontTilt;
+        public static ConfigEntry<float> HandInset;
+        public static ConfigEntry<float> HandHeight;
+        public static ConfigEntry<float> HandForward;
+        public static ConfigEntry<float> BackScale;
+        public static ConfigEntry<float> BackHeight;
+        public static ConfigEntry<float> BackDistance;
+        public static ConfigEntry<float> BackTilt;
 
         public static void Bind(ConfigFile cfg)
         {
@@ -65,8 +88,35 @@ namespace ImmersiveMapper.ShipCargo
             PickUpMode = cfg.Bind("4 - Carrying", "PickUpMode", CarryMode.Front,
                 Synced("What Shift+E on a placed crate does. Inventory: pack it into one item. Back / Front: carry the crate itself, "
                     + "one at a time, on your back or in your arms; click to set it down, right-click to put it down beside you."));
-            CarryEncumbers = cfg.Bind("4 - Carrying", "Encumbers", true,
-                Synced("Carrying a crate counts as being encumbered: slow walk, stamina drain, no running. Off: it only looks that way."));
+            Encumbrance = cfg.Bind("4 - Carrying", "Encumbrance", CarryEncumbrance.Weight,
+                Synced("When carrying a crate makes you encumbered (the heavy walk, slow, stamina drain). Weight: when your inventory "
+                    + "plus the crate and its contents weigh more than you can carry. Always: even for an empty crate. Never: only your "
+                    + "inventory counts, as usual. Otherwise you walk normally, but you can never sprint with a crate."));
+
+            // Live tuning for how a carried crate sits; all read every frame.
+            const string tuning = "5 - Carry tuning";
+            FrontScale = cfg.Bind(tuning, "FrontScale", 0.6f,
+                Synced("Size of a crate held in front, as a share of its full size (it's full size again when set down).", new AcceptableValueRange<float>(0.2f, 1f)));
+            FrontHeight = cfg.Bind(tuning, "FrontHeight", 1.0f,
+                Synced("Meters from the feet up to the middle of a crate held in front.", new AcceptableValueRange<float>(0.2f, 2f)));
+            FrontDistance = cfg.Bind(tuning, "FrontDistance", 0.25f,
+                Synced("Meters between the body and the near side of a crate held in front.", new AcceptableValueRange<float>(-0.5f, 1.5f)));
+            FrontTilt = cfg.Bind(tuning, "FrontTilt", 0f,
+                Synced("Degrees a crate held in front leans back toward the chest (negative: away).", new AcceptableValueRange<float>(-45f, 45f)));
+            HandInset = cfg.Bind(tuning, "HandInset", 0.02f,
+                Synced("Meters the hands reach in from the crate's sides (negative: hands further out).", new AcceptableValueRange<float>(-0.3f, 0.3f)));
+            HandHeight = cfg.Bind(tuning, "HandHeight", -0.05f,
+                Synced("Meters above (or, negative, below) the crate's middle that the hands grip.", new AcceptableValueRange<float>(-0.5f, 0.5f)));
+            HandForward = cfg.Bind(tuning, "HandForward", 0f,
+                Synced("Meters toward the far side (or, negative, the near side) of the crate that the hands grip.", new AcceptableValueRange<float>(-0.5f, 0.5f)));
+            BackScale = cfg.Bind(tuning, "BackScale", 0.6f,
+                Synced("Size of a crate carried on the back, as a share of its full size.", new AcceptableValueRange<float>(0.2f, 1f)));
+            BackHeight = cfg.Bind(tuning, "BackHeight", 1.3f,
+                Synced("Meters from the feet up to the middle of a crate on the back.", new AcceptableValueRange<float>(0.2f, 2.5f)));
+            BackDistance = cfg.Bind(tuning, "BackDistance", 0.15f,
+                Synced("Meters between the back and the near side of a crate on the back.", new AcceptableValueRange<float>(-0.5f, 1f)));
+            BackTilt = cfg.Bind(tuning, "BackTilt", 0f,
+                Synced("Degrees a crate on the back leans forward over the shoulders (negative: away).", new AcceptableValueRange<float>(-45f, 45f)));
         }
 
         private static ConfigDescription Synced(string text, AcceptableValueBase range = null)

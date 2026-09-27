@@ -235,28 +235,42 @@ namespace ImmersiveMapper.ShipCargo
         }
     }
 
-    // Carrying a crate counts as being encumbered (slow walk, stamina drain, no running or dodging), if configured.
+    // A carried crate can make you encumbered (slow walk, stamina drain, no dodging): see CargoConfig.Encumbrance.
     [HarmonyPatch(typeof(Player), nameof(Player.IsEncumbered))]
     internal static class CarryEncumberedPatch
     {
         private static void Postfix(Player __instance, ref bool __result)
         {
-            if (!__result && CargoConfig.CarryEncumbers.Value && CrateCarry.IsCarrying(__instance))
+            if (__result)
             {
-                __result = true;
+                return;
+            }
+            CrateCarry crate = CrateCarry.CarriedBy(__instance);
+            if (crate == null)
+            {
+                return;
+            }
+            switch (CargoConfig.Encumbrance.Value)
+            {
+                case CarryEncumbrance.Always:
+                    __result = true;
+                    break;
+                case CarryEncumbrance.Weight:
+                    __result = __instance.GetInventory().GetTotalWeight() + crate.Weight > __instance.GetMaxCarryWeight();
+                    break;
             }
         }
     }
 
-    // Without the encumbered rules, carrying still uses the encumbered walk. The owner sets it; it syncs to everyone.
-    [HarmonyPatch(typeof(Character), "UpdateWalking")]
-    internal static class CarryWalkPatch
+    // No sprinting with a crate in your arms.
+    [HarmonyPatch(typeof(Player), "CheckRun")]
+    internal static class CarryNoRunPatch
     {
-        private static void Postfix(Character __instance)
+        private static void Postfix(Player __instance, ref bool __result)
         {
-            if (__instance is Player player && CrateCarry.IsCarrying(player))
+            if (__result && CrateCarry.IsCarrying(__instance))
             {
-                __instance.m_zanim.SetBool(Character.s_encumbered, true);
+                __result = false;
             }
         }
     }

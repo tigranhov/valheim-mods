@@ -246,8 +246,11 @@ Config `4 - Carrying / PickUpMode`: Inventory (pack into an item, as before) | B
 - While carrying: the placement ghost is always on; click = set down, right-click = put down beside
   you, Shift = no snapping. Attack/block blocked. Front hides the weapon and puts both hands on the
   crate's sides with hand IK (`CharacterAnimEvent.OnAnimatorIK`).
-- `Encumbers` (default on): counts as encumbered (slow walk, stamina drain, no run/dodge). Off: only
-  the encumbered walk animation (`Character.UpdateWalking` → `s_encumbered`).
+- `Encumbrance`: Weight (default: inventory + crate + contents vs. your carry limit) | Always | Never.
+  Encumbered → the game's heavy walk + its rules; otherwise the normal walk. Never any sprinting.
+- The carried crate is drawn smaller (default 60%); `5 - Carry tuning` has live sliders for scale,
+  height, distance, tilt (front and back) and the hand grip (inset, height, forward).
+- First try: all crates made you encumbered (flat rule) and the crate looked comically large.
 - Put down automatically when sitting/steering, dying, taking out the hammer; swimming drops it in
   the water (floats away in a vanilla crate). Carrier gone / world reloaded → owner sets it down.
 - Also: a crate with another crate on top can't be picked up or lifted (it would be left hanging).

@@ -17,15 +17,6 @@ namespace ImmersiveMapper.ShipCargo
         private const float ZdoSyncSeconds = 0.25f;
         private const float SettleProbe = 20f;
 
-        // Where the crate's center sits relative to the carrier's feet (meters up, meters forward).
-        private const float FrontHeight = 1.0f;
-        private const float FrontGap = 0.25f;
-        private const float BackHeight = 1.3f;
-        private const float BackGap = 0.15f;
-        // Hands grip the sides slightly inside the box and a little below its middle.
-        private const float HandInset = 0.02f;
-        private const float HandDrop = 0.05f;
-
         private static readonly List<CrateCarry> Instances = new List<CrateCarry>();
         private static Player _cachedPlayer;
         private static int _cachedFrame = -1;
@@ -43,10 +34,14 @@ namespace ImmersiveMapper.ShipCargo
         private bool _collidersOff;
         // Whose weapon was put away for a crate held in front; the carrier reference is gone by the time it's set down.
         private Player _handsHiddenOn;
+        private Vector3 _baseScale = Vector3.one;
 
         public bool IsCarried => !_carrierId.IsNone();
 
         public Player Carrier => _carrier;
+
+        /// <summary>The crate itself plus its contents.</summary>
+        public float Weight => _passenger != null ? _passenger.Weight : CargoConfig.CrateWeight.Value;
 
         /// <summary>The crate <paramref name="player"/> is carrying, if any. Cached per frame: this is asked often.</summary>
         public static CrateCarry CarriedBy(Player player)
@@ -80,26 +75,38 @@ namespace ImmersiveMapper.ShipCargo
 
         public static CarryMode Style => CargoConfig.PickUpMode.Value == CarryMode.Back ? CarryMode.Back : CarryMode.Front;
 
-        /// <summary>Where a carried crate's center is, and how it's turned, for this carrier.</summary>
+        /// <summary>How big a carried crate is drawn, as a share of its full size.</summary>
+        public static float Scale => Style == CarryMode.Back ? CargoConfig.BackScale.Value : CargoConfig.FrontScale.Value;
+
+        /// <summary>Where a carried crate's center is, and how it's turned, for this carrier (see "5 - Carry tuning").</summary>
         public static void CarryPose(Player carrier, out Vector3 center, out Quaternion rotation)
         {
             Transform t = carrier.transform;
             Vector3 forward = Vector3.ProjectOnPlane(t.forward, Vector3.up).normalized;
-            rotation = Quaternion.LookRotation(forward, Vector3.up);
-            float halfDepth = CrateShape.Size.z * 0.5f;
-            center = Style == CarryMode.Back
-                ? t.position + Vector3.up * BackHeight - forward * (BackGap + halfDepth)
-                : t.position + Vector3.up * FrontHeight + forward * (FrontGap + halfDepth);
+            Quaternion facing = Quaternion.LookRotation(forward, Vector3.up);
+            float halfDepth = CrateShape.Size.z * 0.5f * Scale;
+            if (Style == CarryMode.Back)
+            {
+                // Positive tilt leans the top forward, over the shoulders.
+                rotation = facing * Quaternion.Euler(CargoConfig.BackTilt.Value, 0f, 0f);
+                center = t.position + Vector3.up * CargoConfig.BackHeight.Value - forward * (CargoConfig.BackDistance.Value + halfDepth);
+            }
+            else
+            {
+                // Positive tilt leans the top back, against the chest.
+                rotation = facing * Quaternion.Euler(-CargoConfig.FrontTilt.Value, 0f, 0f);
+                center = t.position + Vector3.up * CargoConfig.FrontHeight.Value + forward * (CargoConfig.FrontDistance.Value + halfDepth);
+            }
         }
 
         /// <summary>Hand targets on the sides of a crate carried in front.</summary>
         public static void HandTargets(Player carrier, out Vector3 left, out Vector3 right)
         {
             CarryPose(carrier, out Vector3 center, out Quaternion rotation);
-            Vector3 side = rotation * Vector3.right * (CrateShape.Size.x * 0.5f - HandInset);
-            Vector3 down = Vector3.down * HandDrop;
-            left = center - side + down;
-            right = center + side + down;
+            Vector3 grip = center + rotation * new Vector3(0f, CargoConfig.HandHeight.Value, CargoConfig.HandForward.Value);
+            Vector3 side = rotation * Vector3.right * (CrateShape.Size.x * 0.5f * Scale - CargoConfig.HandInset.Value);
+            left = grip - side;
+            right = grip + side;
         }
 
         private void Awake()
@@ -113,6 +120,7 @@ namespace ImmersiveMapper.ShipCargo
             _crate = GetComponent<CargoCrate>();
             _passenger = GetComponent<ShipPassenger>();
             _colliders = GetComponentsInChildren<Collider>(true);
+            _baseScale = transform.localScale;
             Instances.Add(this);
             Refresh();
         }
@@ -138,6 +146,7 @@ namespace ImmersiveMapper.ShipCargo
             Refresh();
             _carrier = player;
             CrateGhost.BeginCarried(player, this);
+            player.Message(MessageHud.MessageType.TopLeft, $"Carrying a crate ({Weight:0} weight)");
         }
 
         /// <summary>Sets the crate down at this pose, riding <paramref name="ship"/> if given. Owner only.</summary>
@@ -185,6 +194,7 @@ namespace ImmersiveMapper.ShipCargo
             SetCollidersEnabled(!IsCarried);
             if (!IsCarried)
             {
+                transform.localScale = _baseScale;
                 ShowHands();
             }
         }
@@ -214,8 +224,11 @@ namespace ImmersiveMapper.ShipCargo
                     return;
                 }
             }
+            // Drawn smaller while carried (colliders are off, so only the look changes); full size again when set down.
+            float scale = Scale;
             CarryPose(_carrier, out Vector3 center, out Quaternion rotation);
-            transform.SetPositionAndRotation(center - rotation * CrateShape.Center, rotation);
+            transform.localScale = _baseScale * scale;
+            transform.SetPositionAndRotation(center - rotation * (CrateShape.Center * scale), rotation);
             UpdateHands();
             if (!_nview.IsOwner())
             {
