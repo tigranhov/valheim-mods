@@ -178,6 +178,10 @@ namespace ImmersiveMapper.Cartographer
             return true;
         }
 
+        public void RightClick(Vector2 point)
+        {
+        }
+
         private void PickAt(Vector2 point)
         {
             switch (_pick)

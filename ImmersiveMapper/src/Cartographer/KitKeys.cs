@@ -16,6 +16,7 @@ namespace ImmersiveMapper.Cartographer
 
         public static ButtonConfig FlipSheet;
         public static ButtonConfig EndLeg;
+        public static ButtonConfig ResetTally;
 
         public static void Register(ConfigFile cfg)
         {
@@ -31,8 +32,15 @@ namespace ImmersiveMapper.Cartographer
                 Config = cfg.Bind("5 - Keys", "EndLeg", KeyCode.J, "With the map case out: note the tally in the journal and start a new leg."),
                 Hint = "End leg",
             };
+            ResetTally = new ButtonConfig
+            {
+                Name = "IM_MapResetTally",
+                Config = cfg.Bind("5 - Keys", "ResetTally", KeyCode.K, "With the map case out: set the tally back to 0 without noting a leg."),
+                Hint = "Reset tally",
+            };
             InputManager.Instance.AddButton(Plugin.PluginGuid, FlipSheet);
             InputManager.Instance.AddButton(Plugin.PluginGuid, EndLeg);
+            InputManager.Instance.AddButton(Plugin.PluginGuid, ResetTally);
 
             KeyHintManager.Instance.AddKeyHint(new KeyHintConfig
             {
@@ -42,6 +50,7 @@ namespace ImmersiveMapper.Cartographer
                     new ButtonConfig { Name = Draw, Hint = "Draw" },
                     FlipSheet,
                     EndLeg,
+                    ResetTally,
                     new ButtonConfig { Name = Map, Hint = "Put away" },
                 },
             });

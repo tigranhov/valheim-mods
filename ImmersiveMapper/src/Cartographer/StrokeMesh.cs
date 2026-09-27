@@ -14,8 +14,6 @@ namespace ImmersiveMapper.Cartographer
         /// <summary>Most vertices one mesh takes (UI meshes use 16-bit indices).</summary>
         public const int MaxVertices = 64000;
 
-        private const byte WashAlpha = 150;
-        private const byte FillAlpha = 110;
         // Mitres longer than this many half-widths are cut short, so sharp turns don't grow spikes.
         private const float MaxMiter = 3f;
 
@@ -77,7 +75,7 @@ namespace ImmersiveMapper.Cartographer
                 return;
             }
             Color32 color = Inks.Of(fill.Color);
-            color.a = FillAlpha;
+            color.a = fill.Alpha;
             int start = vh.currentVertCount;
             foreach (Vector2 point in fill.Points)
             {
@@ -96,12 +94,10 @@ namespace ImmersiveMapper.Cartographer
             {
                 case Pen.Guide:
                     return Inks.GuideColor;
-                case Pen.Wash:
-                    Color32 wash = Inks.Of(stroke.Color);
-                    wash.a = WashAlpha;
-                    return wash;
                 default:
-                    return Inks.Of(stroke.Color);
+                    Color32 color = Inks.Of(stroke.Color);
+                    color.a = stroke.Alpha;
+                    return color;
             }
         }
 

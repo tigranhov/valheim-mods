@@ -9,6 +9,13 @@ namespace ImmersiveMapper.Cartographer
         Broad = 2,
     }
 
+    internal enum Opacity : byte
+    {
+        Solid = 0,
+        Half = 1,
+        Light = 2,
+    }
+
     /// <summary>
     /// The colours a drawing can use, by stable index (saved in strokes), and the size of each tool. Sizes are shares
     /// of the view's height, so a zoomed-in brush draws a finer line on the canvas, like leaning closer to the paper.
@@ -66,6 +73,11 @@ namespace ImmersiveMapper.Cartographer
                 default:
                     return Pick(size, 0.006f, 0.011f, 0.02f);
             }
+        }
+
+        public static byte AlphaOf(Opacity opacity)
+        {
+            return opacity == Opacity.Light ? (byte)80 : opacity == Opacity.Half ? (byte)150 : (byte)255;
         }
 
         public static float StampSize(BrushSize size)

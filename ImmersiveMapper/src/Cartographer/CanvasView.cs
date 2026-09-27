@@ -14,6 +14,7 @@ namespace ImmersiveMapper.Cartographer
         void Up(Vector2 point, PointerEventData data);
         /// <summary>True when the tool used the wheel itself (the view then doesn't zoom).</summary>
         bool Scroll(Vector2 point, float delta);
+        void RightClick(Vector2 point);
     }
 
     /// <summary>
@@ -48,7 +49,11 @@ namespace ImmersiveMapper.Cartographer
         private readonly int[] _cursor = new int[3];
         private readonly DrawingLayer _live;
         private readonly RectTransform _marks;
-        private readonly List<KeyValuePair<Text, Note>> _noteTexts = new List<KeyValuePair<Text, Note>>();
+        private readonly Dictionary<Stamp, RectTransform> _stampMarks = new Dictionary<Stamp, RectTransform>();
+        private readonly Dictionary<Note, Text> _noteMarks = new Dictionary<Note, Text>();
+        private readonly RectTransform _selectionBox;
+        private readonly RectTransform[] _selectionEdges = new RectTransform[4];
+        private Rect? _selected;
 
         private float _ppu = 100f;
         private float _zoom = 1f;
@@ -99,6 +104,19 @@ namespace ImmersiveMapper.Cartographer
             _live = NewLayer(Layer(Content, "live"));
             _marks = Layer(Content, "marks");
             Overlay = Layer(Content, "overlay");
+
+            _selectionBox = Layer(Content, "selection");
+            for (int i = 0; i < _selectionEdges.Length; i++)
+            {
+                RectTransform edge = Ui.Rect("edge", _selectionBox);
+                edge.anchorMin = edge.anchorMax = Vector2.zero;
+                edge.pivot = Vector2.zero;
+                var line = edge.gameObject.AddComponent<Image>();
+                line.color = new Color(1f, 0.6f, 0.15f, 0.95f);
+                line.raycastTarget = false;
+                _selectionEdges[i] = edge;
+            }
+            _selectionBox.gameObject.SetActive(false);
         }
 
         public bool Alive => Root != null;
@@ -162,6 +180,7 @@ namespace ImmersiveMapper.Cartographer
         public void Show(Sheet sheet)
         {
             Sheet = sheet;
+            ShowSelection(null);
             Refresh();
         }
 
@@ -230,6 +249,72 @@ namespace ImmersiveMapper.Cartographer
             _live.SetVerticesDirty();
         }
 
+        /// <summary>Redraws just one thing that moved or changed (its mesh, or its mark).</summary>
+        public void Moved(object thing)
+        {
+            switch (thing)
+            {
+                case Stamp stamp:
+                    if (_stampMarks.TryGetValue(stamp, out RectTransform mark) && mark != null)
+                    {
+                        mark.anchoredPosition = stamp.Position * _ppu;
+                        mark.sizeDelta = Vector2.one * stamp.Size * _ppu;
+                    }
+                    return;
+                case Note note:
+                    if (_noteMarks.TryGetValue(note, out Text text) && text != null)
+                    {
+                        text.rectTransform.anchoredPosition = note.Position * _ppu;
+                        LayoutNote(text, note);
+                    }
+                    return;
+            }
+            foreach (List<DrawingLayer> chunks in _chunks)
+            {
+                foreach (DrawingLayer chunk in chunks)
+                {
+                    if ((thing is Stroke stroke && chunk.Strokes.Contains(stroke)) || (thing is Fill fill && chunk.Fills.Contains(fill)))
+                    {
+                        chunk.SetVerticesDirty();
+                        return;
+                    }
+                }
+            }
+        }
+
+        /// <summary>Draws a highlight box around an area of the canvas, or hides it.</summary>
+        public void ShowSelection(Rect? bounds)
+        {
+            _selected = bounds;
+            _selectionBox.gameObject.SetActive(bounds.HasValue);
+            _selectionBox.SetAsLastSibling();
+            LayoutSelection();
+        }
+
+        // Two screen units thick at any zoom.
+        private void LayoutSelection()
+        {
+            if (!_selected.HasValue)
+            {
+                return;
+            }
+            Rect r = _selected.Value;
+            float t = 2f / Mathf.Max(_zoom, 0.0001f);
+            float pad = 3f / Mathf.Max(_zoom, 0.0001f);
+            Vector2 min = r.min * _ppu - Vector2.one * pad;
+            Vector2 max = r.max * _ppu + Vector2.one * pad;
+            Edge(0, new Vector2(min.x, min.y), new Vector2(max.x - min.x, t));
+            Edge(1, new Vector2(min.x, max.y - t), new Vector2(max.x - min.x, t));
+            Edge(2, new Vector2(min.x, min.y), new Vector2(t, max.y - min.y));
+            Edge(3, new Vector2(max.x - t, min.y), new Vector2(t, max.y - min.y));
+        }
+
+        private void Edge(int index, Vector2 position, Vector2 size)
+        {
+            _selectionEdges[index].anchoredPosition = position;
+            _selectionEdges[index].sizeDelta = size;
+        }
+
         public void SetView(float zoom, Vector2 center)
         {
             _zoom = Mathf.Clamp(zoom, MinZoom, MaxZoom);
@@ -287,9 +372,9 @@ namespace ImmersiveMapper.Cartographer
             if (_notesDirtyAt >= 0f && Time.unscaledTime - _notesDirtyAt > NoteRelayoutDelay)
             {
                 _notesDirtyAt = -1f;
-                foreach (KeyValuePair<Text, Note> pair in _noteTexts)
+                foreach (KeyValuePair<Note, Text> pair in _noteMarks)
                 {
-                    LayoutNote(pair.Key, pair.Value);
+                    LayoutNote(pair.Value, pair.Key);
                 }
             }
         }
@@ -315,6 +400,7 @@ namespace ImmersiveMapper.Cartographer
                 }
             }
             _notesDirtyAt = Time.unscaledTime;
+            LayoutSelection();
             ViewChanged?.Invoke();
         }
 
@@ -400,7 +486,8 @@ namespace ImmersiveMapper.Cartographer
             {
                 UnityEngine.Object.Destroy(_marks.GetChild(i).gameObject);
             }
-            _noteTexts.Clear();
+            _stampMarks.Clear();
+            _noteMarks.Clear();
             if (Sheet == null)
             {
                 return;
@@ -433,8 +520,8 @@ namespace ImmersiveMapper.Cartographer
             image.sprite = sprite;
             image.preserveAspect = true;
             image.raycastTarget = false;
-            // White art takes the ink colour; coloured art is dimmed a little so it sits on the parchment.
-            image.color = kind.Tinted ? (Color)Inks.Of(Inks.Black) : new Color(0.82f, 0.78f, 0.72f, 0.95f);
+            image.color = kind.Dim ? new Color(0.9f, 0.87f, 0.82f, 1f) : Color.white;
+            _stampMarks[stamp] = rect;
         }
 
         private void AddNote(Note note)
@@ -447,7 +534,7 @@ namespace ImmersiveMapper.Cartographer
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = note.Position * _ppu;
             LayoutNote(text, note);
-            _noteTexts.Add(new KeyValuePair<Text, Note>(text, note));
+            _noteMarks[note] = text;
         }
 
         // Text is drawn at its on-screen size and shrunk back by the zoom, so it stays crisp when zoomed in.
@@ -485,9 +572,17 @@ namespace ImmersiveMapper.Cartographer
                 _panning = View.Zoomable;
                 return;
             }
-            if (data.button == PointerEventData.InputButton.Left && View.ScreenToCanvas(data.position, data.pressEventCamera, out Vector2 point))
+            if (!View.ScreenToCanvas(data.position, data.pressEventCamera, out Vector2 point))
+            {
+                return;
+            }
+            if (data.button == PointerEventData.InputButton.Left)
             {
                 View.Tool?.Down(point, data);
+            }
+            else if (data.button == PointerEventData.InputButton.Right)
+            {
+                View.Tool?.RightClick(point);
             }
         }
 

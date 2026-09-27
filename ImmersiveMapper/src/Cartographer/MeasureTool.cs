@@ -83,6 +83,10 @@ namespace ImmersiveMapper.Cartographer
             return false;
         }
 
+        public void RightClick(Vector2 point)
+        {
+        }
+
         private void Aim(Vector2 point)
         {
             Vector2 direction = point - _anchor;

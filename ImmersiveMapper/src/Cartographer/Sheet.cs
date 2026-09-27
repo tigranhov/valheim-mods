@@ -27,6 +27,8 @@ namespace ImmersiveMapper.Cartographer
         public LineStyle Style;
         /// <summary>Line width in canvas units.</summary>
         public float Width;
+        /// <summary>255 is solid; lower is see-through.</summary>
+        public byte Alpha = 255;
         public readonly List<Vector2> Points = new List<Vector2>();
     }
 
@@ -34,6 +36,8 @@ namespace ImmersiveMapper.Cartographer
     internal sealed class Fill
     {
         public byte Color;
+        /// <summary>255 is solid; lower is see-through.</summary>
+        public byte Alpha = 255;
         public readonly List<Vector2> Points = new List<Vector2>();
 
         private List<int> _triangles;
@@ -75,7 +79,10 @@ namespace ImmersiveMapper.Cartographer
         public const float DefaultStampSize = 0.065f;
         public const float DefaultNoteSize = 0.036f;
 
-        private const int Version = 2;
+        private const int Version = 3;
+        // Version 2 had no opacity: washes and fills were see-through, everything else solid.
+        private const byte OldWashAlpha = 150;
+        private const byte OldFillAlpha = 110;
         // Steps are stored in 1/4096 of a unit; a longer step is written out in full after this marker.
         private const float StepScale = 4096f;
         private const short FullPoint = short.MinValue;
@@ -162,12 +169,14 @@ namespace ImmersiveMapper.Cartographer
                 pkg.Write(stroke.Color);
                 pkg.Write((byte)stroke.Style);
                 pkg.Write(stroke.Width);
+                pkg.Write(stroke.Alpha);
                 WritePoints(pkg, stroke.Points);
             }
             pkg.Write(Fills.Count);
             foreach (Fill fill in Fills)
             {
                 pkg.Write(fill.Color);
+                pkg.Write(fill.Alpha);
                 WritePoints(pkg, fill.Points);
             }
             pkg.Write(Stamps.Count);
@@ -225,6 +234,7 @@ namespace ImmersiveMapper.Cartographer
                 for (int i = 0; i < strokes; i++)
                 {
                     var stroke = new Stroke { Pen = (Pen)pkg.ReadByte(), Color = pkg.ReadByte(), Style = (LineStyle)pkg.ReadByte(), Width = pkg.ReadSingle() };
+                    stroke.Alpha = version >= 3 ? pkg.ReadByte() : stroke.Pen == Pen.Wash ? OldWashAlpha : (byte)255;
                     ReadPoints(pkg, stroke.Points);
                     sheet.Strokes.Add(stroke);
                 }
@@ -232,6 +242,7 @@ namespace ImmersiveMapper.Cartographer
                 for (int i = 0; i < fills; i++)
                 {
                     var fill = new Fill { Color = pkg.ReadByte() };
+                    fill.Alpha = version >= 3 ? pkg.ReadByte() : OldFillAlpha;
                     ReadPoints(pkg, fill.Points);
                     sheet.Fills.Add(fill);
                 }

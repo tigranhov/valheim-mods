@@ -69,6 +69,8 @@ namespace ImmersiveMapper.Cartographer
         public static ConfigEntry<int> MaxMasterPoints;
         public static ConfigEntry<int> MaxMasterMarks;
 
+        public static ConfigEntry<string> StampPalette;
+
         public static ConfigEntry<float> ReadingSize;
         public static ConfigEntry<float> ReadingLift;
         public static ConfigEntry<float> DrawingSize;
@@ -90,8 +92,9 @@ namespace ImmersiveMapper.Cartographer
             DraftSheets = cfg.Bind(mapCase, "DraftSheets", 3,
                 Synced("Draft sheets in a map case. Lowering it never deletes a drawing: hidden sheets come back if you raise it again.",
                     new AcceptableValueRange<int>(1, 8)));
-            Pace = cfg.Bind(mapCase, "ReadingPace", ReadingPace.Walk,
-                Synced("How fast you can move with the map case out. Walk: the slow walk. Jog: the normal pace, no sprinting. Any: no limit."));
+            Pace = cfg.Bind(mapCase, "ReadingPace", ReadingPace.Jog,
+                Synced("How fast you can move with the map case out. Walk: the slow walk. Jog: the normal pace, no sprinting (default, "
+                    + "user's pick 2026-09-27). Any: no limit."));
             Drawing = cfg.Bind(mapCase, "FieldDrawing", FieldDrawing.Sketch,
                 Synced("What you can draw away from a cartography table. Everything: every tool, ink included. Sketch: charcoal, stamps and "
                     + "notes. Stamps: stamps and notes only. Nothing: reading only."));
@@ -123,6 +126,11 @@ namespace ImmersiveMapper.Cartographer
                     new AcceptableValueRange<int>(10000, 1000000)));
             MaxMasterMarks = cfg.Bind(table, "MaxMarks", 3000,
                 Synced("Most stamps plus labels one master map holds.", new AcceptableValueRange<int>(100, 20000)));
+
+            StampPalette = cfg.Bind("7 - Stamps", "Palette", Stamps.DefaultPalette,
+                "Your stamps, in order: names of items, pieces or locations with a map icon (like Vendor_BlackForest), or mark_x, "
+                + "mark_circle, mark_dot. Any vanilla or modded prefab name works. Only changes your own palette: stamps already on a "
+                + "sheet show for everyone.");
 
             const string screen = "4 - Screen";
             ReadingSize = cfg.Bind(screen, "ReadingSize", 0.42f,

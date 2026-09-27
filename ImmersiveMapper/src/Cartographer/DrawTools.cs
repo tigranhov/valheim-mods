@@ -18,7 +18,8 @@ namespace ImmersiveMapper.Cartographer
 
     /// <summary>
     /// The drawing tools, working on whatever drawing a canvas view shows. Sizes are shares of the view's height, divided
-    /// by the zoom, so zooming in draws finer. Every change can be undone while the view stays open.
+    /// by the zoom, so zooming in draws finer. Right-click selects a thing to move, nudge, resize, recolour or delete.
+    /// Every change can be undone while the view stays open.
     /// </summary>
     internal sealed class DrawTools : ICanvasTool
     {
@@ -32,7 +33,8 @@ namespace ImmersiveMapper.Cartographer
         public byte Color = Inks.Black;
         public bool Straight;
         public bool Dotted;
-        public string StampId = "point";
+        public string StampId = "mark_x";
+        public Opacity Opacity = Opacity.Solid;
         public Func<ToolKind, bool> Allowed = _ => true;
         public int MaxPoints = 6000;
         public int MaxMarks = 200;
@@ -46,10 +48,15 @@ namespace ImmersiveMapper.Cartographer
         private List<Action> _erased;
         private bool _warnedFull;
 
+        private readonly Selection _selection;
+
         public DrawTools(CanvasView view)
         {
             _view = view;
+            _selection = new Selection(view, Done);
         }
+
+        public Selection Selection => _selection;
 
         public bool CanUndo => _undo.Count > 0;
 
@@ -60,13 +67,72 @@ namespace ImmersiveMapper.Cartographer
             _undo.Clear();
         }
 
+        public void Deselect()
+        {
+            _selection.Clear();
+        }
+
+        public void RightClick(Vector2 point)
+        {
+            Finish();
+            _selection.SelectAt(Clamp(point));
+        }
+
+        /// <summary>Keys for the selected thing: Delete or Backspace erases it, the arrows nudge it (Shift: further).</summary>
+        public void UpdateKeys()
+        {
+            if (!_selection.Any || TextPrompt.Open)
+            {
+                return;
+            }
+            if (ZInput.GetKeyDown(KeyCode.Delete) || ZInput.GetKeyDown(KeyCode.Backspace))
+            {
+                _selection.Delete();
+                return;
+            }
+            float step = ZInput.GetKey(KeyCode.LeftShift) || ZInput.GetKey(KeyCode.RightShift) ? 10f : 1f;
+            Vector2 nudge = Vector2.zero;
+            if (ZInput.GetKeyDown(KeyCode.LeftArrow)) nudge.x -= step;
+            if (ZInput.GetKeyDown(KeyCode.RightArrow)) nudge.x += step;
+            if (ZInput.GetKeyDown(KeyCode.DownArrow)) nudge.y -= step;
+            if (ZInput.GetKeyDown(KeyCode.UpArrow)) nudge.y += step;
+            if (nudge != Vector2.zero)
+            {
+                _selection.Nudge(nudge);
+            }
+        }
+
+        /// <summary>A colour clicked while a line or fill is selected recolours it; false when nothing could take it.</summary>
+        public bool RecolourSelection(byte color)
+        {
+            if (!_selection.Recolourable)
+            {
+                return false;
+            }
+            _selection.Recolour(color);
+            return true;
+        }
+
         public void Down(Vector2 point, PointerEventData data)
         {
-            if (Sheet == null || Sheet.Unreadable || TextPrompt.Open || !Allowed(Tool))
+            if (Sheet == null || Sheet.Unreadable || TextPrompt.Open)
             {
                 return;
             }
             point = Clamp(point);
+            // With something selected, a press on it moves it and a press elsewhere only lets go (it doesn't draw).
+            if (_selection.Any)
+            {
+                if (!_selection.Grab(point))
+                {
+                    _selection.Clear();
+                }
+                return;
+            }
+            if (!Allowed(Tool))
+            {
+                return;
+            }
             _warnedFull = false;
             switch (Tool)
             {
@@ -104,6 +170,11 @@ namespace ImmersiveMapper.Cartographer
         public void Drag(Vector2 point, PointerEventData data)
         {
             point = Clamp(point);
+            if (_selection.Moving)
+            {
+                _selection.DragTo(point);
+                return;
+            }
             if (_live != null)
             {
                 if (Straight && !_liveIsFill)
@@ -133,6 +204,11 @@ namespace ImmersiveMapper.Cartographer
 
         public void Up(Vector2 point, PointerEventData data)
         {
+            if (_selection.Moving)
+            {
+                _selection.Release();
+                return;
+            }
             Finish();
             if (_erased != null && _erased.Count > 0)
             {
@@ -148,9 +224,15 @@ namespace ImmersiveMapper.Cartographer
             _erased = null;
         }
 
+        /// <summary>Ctrl + wheel resizes the selected thing.</summary>
         public bool Scroll(Vector2 point, float delta)
         {
-            return false;
+            if (!_selection.Any || (!ZInput.GetKey(KeyCode.LeftControl) && !ZInput.GetKey(KeyCode.RightControl)))
+            {
+                return false;
+            }
+            _selection.ScaleBy(delta > 0f ? 1.06f : 1f / 1.06f);
+            return true;
         }
 
         /// <summary>Ends a line being drawn (the button was let go, the page changed or the view closed).</summary>
@@ -202,6 +284,7 @@ namespace ImmersiveMapper.Cartographer
             _undo.RemoveAt(_undo.Count - 1);
             undo();
             _view.Refresh();
+            _selection.Refresh();
             Changed?.Invoke();
         }
 
@@ -216,6 +299,7 @@ namespace ImmersiveMapper.Cartographer
                 // An outline being drawn for a fill shows as a thin line in the fill's colour.
                 Width = (_liveIsFill ? Inks.PenWidth(Pen.Ink, BrushSize.Fine) : Inks.PenWidth(pen, Size)) / _view.Zoom,
                 Style = Dotted && !_liveIsFill && pen != Pen.Wash ? LineStyle.Dotted : LineStyle.Solid,
+                Alpha = Inks.AlphaOf(Opacity),
             };
             _live.Points.Add(point);
             if (Straight && !_liveIsFill)
@@ -232,7 +316,7 @@ namespace ImmersiveMapper.Cartographer
             {
                 return null;
             }
-            var fill = new Fill { Color = Color };
+            var fill = new Fill { Color = Color, Alpha = Inks.AlphaOf(Opacity) };
             // Long outlines are thinned out evenly: triangulating is quadratic in the number of points.
             int step = Mathf.Max(1, Mathf.CeilToInt(points.Count / (float)MaxFillPoints));
             for (int i = 0; i < points.Count; i += step)

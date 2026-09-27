@@ -5,7 +5,7 @@ namespace ImmersiveMapper.Cartographer
 {
     /// <summary>
     /// Opens and closes the table view for the local player: the game's input is blocked while working at the table, and
-    /// leaving (Esc, right-click with nothing to stop, Done, dying, the table gone) saves and frees the table.
+    /// leaving (Esc with nothing to stop, Done, dying, the table gone) saves and frees the table.
     /// </summary>
     internal static class TableScreen
     {
@@ -54,11 +54,8 @@ namespace ImmersiveMapper.Cartographer
             {
                 return;
             }
-            if (ZInput.GetKeyDown(KeyCode.Escape))
-            {
-                _close = true;
-            }
-            else if ((ZInput.GetButtonDown(KitKeys.Draw) || ZInput.GetButtonDown("JoyBlock")) && !_view.Cancel())
+            // Esc first stops placing a draft or laying strings; with nothing to stop, it leaves the table.
+            if (ZInput.GetKeyDown(KeyCode.Escape) && !_view.Cancel())
             {
                 _close = true;
             }

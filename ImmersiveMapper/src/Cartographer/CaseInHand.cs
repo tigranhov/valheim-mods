@@ -61,9 +61,9 @@ namespace ImmersiveMapper.Cartographer
             if (IsDrawing)
             {
                 _drawing.Update();
-                // Esc or right-click closes, but not the keypress that just closed a text prompt.
+                // Esc (or the map key) closes, but not the keypress that just closed a text prompt. Right-click selects.
                 bool prompt = TextPrompt.Open || _promptWasOpen;
-                if (!prompt && (ZInput.GetKeyDown(KeyCode.Escape) || DrawPressed() || MapKeyPressed()))
+                if (!prompt && (ZInput.GetKeyDown(KeyCode.Escape) || MapKeyPressed()))
                 {
                     _closeDrawing = true;
                 }
@@ -92,6 +92,10 @@ namespace ImmersiveMapper.Cartographer
             else if (ZInput.GetButtonDown(KitKeys.EndLeg.Name))
             {
                 AskEndLeg();
+            }
+            else if (ZInput.GetButtonDown(KitKeys.ResetTally.Name))
+            {
+                ResetTally();
             }
         }
 
@@ -151,6 +155,7 @@ namespace ImmersiveMapper.Cartographer
             {
                 _drawing = new FieldView(canvas.transform);
                 _drawing.OnEndLeg = AskEndLeg;
+                _drawing.OnResetTally = ResetTally;
                 _drawing.OnDone = () => _closeDrawing = true;
             }
             return true;
@@ -178,6 +183,12 @@ namespace ImmersiveMapper.Cartographer
             {
                 _reading.Show(_session);
             }
+        }
+
+        private static void ResetTally()
+        {
+            Tally.Reset();
+            Player.m_localPlayer?.Message(MessageHud.MessageType.TopLeft, "Tally reset to 0");
         }
 
         private static void AskEndLeg()

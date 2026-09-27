@@ -71,6 +71,12 @@ namespace ImmersiveMapper.Cartographer
             return paces;
         }
 
+        /// <summary>Starts counting from zero without noting a leg.</summary>
+        public static void Reset()
+        {
+            TakeLeg();
+        }
+
         public static void Flush()
         {
             if (_case != null && _dirty)

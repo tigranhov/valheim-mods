@@ -98,6 +98,13 @@ namespace ImmersiveMapper.Cartographer
             _cancel.onClick.AddListener(EndPlacing);
 
             _hint = Ui.HudText("hint", _root, 16, TextAnchor.MiddleCenter);
+            _tools.Selection.Changed += () =>
+            {
+                if (_view.Tool == _tools)
+                {
+                    DefaultHint();
+                }
+            };
             _root.gameObject.SetActive(false);
         }
 
@@ -139,6 +146,7 @@ namespace ImmersiveMapper.Cartographer
         public void Close()
         {
             _tools.Finish();
+            _tools.Deselect();
             EndPlacing();
             EndMeasure();
             if (_dirty)
@@ -174,10 +182,14 @@ namespace ImmersiveMapper.Cartographer
                 _tools.Undo();
                 _panel.Refresh();
             }
+            if (_view.Tool == _tools)
+            {
+                _tools.UpdateKeys();
+            }
             _view.Update();
         }
 
-        /// <summary>Right-click: stops placing a draft or laying strings. False when there was nothing to stop.</summary>
+        /// <summary>Esc: stops placing a draft or laying strings. False when there was nothing to stop.</summary>
         public bool Cancel()
         {
             if (_overlay.Active)
@@ -210,10 +222,11 @@ namespace ImmersiveMapper.Cartographer
         {
             EndMeasure();
             _tools.Finish();
+            _tools.Deselect();
             _placingDraft = page;
             _overlay.Begin(_case.Drafts[page]);
             _view.Tool = _overlay;
-            SetHint("Drag the draft to move it · Shift + drag to turn it · Ctrl + wheel to resize · or use Two-point fit");
+            SetHint("Drag the draft to move it · Shift + drag to turn it · Ctrl + wheel to resize · or use Two-point fit · Esc to cancel");
             RefreshBars();
         }
 
@@ -317,13 +330,14 @@ namespace ImmersiveMapper.Cartographer
                 EndPlacing();
             }
             _tools.Finish();
+            _tools.Deselect();
             float squares = leg.Paces / (float)Mathf.Max(1, _master.PacesPerSquare);
             _measure.Begin(leg, squares * Sheet.GridSquare, anchor);
             _view.Tool = _measure;
             string label = string.IsNullOrEmpty(leg.Label) ? "" : $" ({leg.Label})";
             SetHint($"Leg {leg.Number}{label}: {leg.Paces} paces = {squares:0.#} squares. " +
                 (anchor.HasValue ? "Drag toward where it went · Shift + press to start elsewhere" : "Press where it began and drag toward where it went")
-                + " · right-click to stop");
+                + " · Esc to stop");
         }
 
         private void EndMeasure()
@@ -508,7 +522,12 @@ namespace ImmersiveMapper.Cartographer
 
         private void DefaultHint()
         {
-            SetHint("Wheel to zoom · middle mouse or Space + drag to pan · Ctrl+Z undo · Esc to leave the table");
+            if (_tools.Selection.Any)
+            {
+                SetHint(string.Format("Selected {0}: drag to move · arrows nudge (Shift: more) · Ctrl + wheel resizes · a colour recolours · Delete erases · right-click elsewhere lets go", _tools.Selection.Describe()));
+                return;
+            }
+            SetHint("Right-click to select · wheel to zoom · middle mouse or Space + drag to pan · Ctrl+Z undo · Esc to leave the table");
         }
 
         private static void Tint(Button button, bool selected)

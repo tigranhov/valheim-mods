@@ -96,17 +96,18 @@ namespace ImmersiveMapper.Cartographer
                     {
                         float tooth = Mathf.PerlinNoise(x * 0.31f, y * 0.9f);
                         float drag = Mathf.PerlinNoise(x * 0.05f + 17f, y * 0.2f);
-                        alpha = Mathf.Clamp01(middle * 2.2f - 0.25f) * Mathf.Lerp(0.35f, 0.95f, tooth * 0.7f + drag * 0.3f);
+                        // Dense enough to read as a solid line, with a little tooth left at the edges.
+                        alpha = Mathf.Clamp01(middle * 2.6f - 0.15f) * Mathf.Lerp(0.72f, 1f, tooth * 0.7f + drag * 0.3f);
                     }
                     else if (row == 1)
                     {
-                        alpha = Mathf.Clamp01(middle * 4f) * 0.92f;
+                        alpha = Mathf.Clamp01(middle * 4f);
                     }
                     else
                     {
                         float mottle = Mathf.PerlinNoise(x * 0.08f + 5f, y * 0.25f + 3f);
                         float soft = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(middle * 1.6f));
-                        alpha = soft * Mathf.Lerp(0.55f, 0.85f, mottle);
+                        alpha = soft * Mathf.Lerp(0.88f, 1f, mottle);
                     }
                     pixels[y * width + x] = new Color(1f, 1f, 1f, alpha);
                 }

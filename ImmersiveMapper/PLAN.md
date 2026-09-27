@@ -312,7 +312,8 @@ sharing, companion app.
 - **Held like the hammer**, in both hands. **M** (the map key, unused in no-map worlds) takes it
   out / puts it away.
 - **Reading while walking:** the sheet shows while held; you can walk but not run (config to allow
-  running). A key switches to drawing (cursor, field tools); **drawing stops you** (input blocked).
+  running; changed to the normal pace without sprinting after the first try). A key switches to
+  drawing (cursor, field tools); **drawing stops you** (input blocked).
 - Holds **draft sheets** (field sketches, count in config) and **a copy of one table's master**
   (read-only in the field).
 - **Tally:** counts your paces while the case is anywhere in the inventory (on foot only; not
@@ -327,11 +328,21 @@ sharing, companion app.
   gets the master again at a table.
 - Strokes stored as **vector strokes**, compressed in the item's custom data; stroke/point caps.
 
-**Status (2026-09-27):** steps 1 and 2 built (`src/Cartographer`), neither tested in game yet.
+**Status (2026-09-27):** steps 1 and 2 built (`src/Cartographer`); the user tried them ("pretty good")
+and asked for the changes below (built, to re-test).
+**Changes after the first try (user's picks):** Esc closes the drawing and the table (at the table
+it first stops placing a draft or laying strings); **right-click selects** a line, wash, fill, stamp
+or label to drag, nudge (arrows), resize (Ctrl + wheel), recolour (click a colour) or delete (Delete
+key / button), all undoable. New strokes are **solid** by default, with Solid / Half / Light buttons
+(saved per stroke, format v3; older drawings keep their look); charcoal is less grainy. Stamps are
+the game's coloured icons found by prefab name (items, pieces, locations with a map icon) plus drawn
+red markers (X, circle, dot); the palette is each player's own config list (`7 - Stamps`), and old
+stamp ids map to the new icons. Holding the case no longer slows you to a walk: `ReadingPace`
+default **Jog** (normal pace, no sprint). **Reset tally** key (K) and button: back to 0 without a leg.
 The drawing format (v2) and fill triangulation were unit-tested outside the game (a scratch test,
 not committed): round trip, step-1 sheets still readable, self-crossing outlines still fill.
-Keys: M take out / put away (no-map worlds), right-click draw, F next sheet, J end leg; in the
-drawing view Esc or right-click closes, Ctrl+Z undoes. The case is a copy of the hammer with a
+Keys: M take out / put away (no-map worlds), right-click draw, F next sheet, J end leg, K reset
+the tally; in the drawing view Esc closes, right-click selects, Ctrl+Z undoes. The case is a copy of the hammer with a
 leather tube model made in code; the parchment and pen textures are made in code too (no assets).
 Stamps borrow the game's map pin icons, trader icons and a few item/piece icons.
 

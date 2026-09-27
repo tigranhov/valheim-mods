@@ -7,9 +7,9 @@ using UnityEngine.UI;
 namespace ImmersiveMapper.Cartographer
 {
     /// <summary>
-    /// Drawing in the field: a draft large in the middle of the screen (zoom with the wheel, pan with the middle mouse),
-    /// the tools the FieldDrawing rule allows, tabs for the master copy, the drafts and the journal. The game's input is
-    /// blocked while it's open, so you stand still.
+    /// Drawing in the field: a draft large in the middle of the screen (zoom with the wheel, pan with the middle mouse,
+    /// right-click to select), the tools the FieldDrawing rule allows, tabs for the master copy, the drafts and the
+    /// journal. The game's input is blocked while it's open, so you stand still. Esc closes it.
     /// </summary>
     internal sealed class FieldView
     {
@@ -24,6 +24,7 @@ namespace ImmersiveMapper.Cartographer
         private readonly RawImage _journal;
         private readonly Text _journalText;
         private readonly Button _endLeg;
+        private readonly Button _resetTally;
         private readonly Text _hint;
 
         private CaseSession _session;
@@ -31,6 +32,7 @@ namespace ImmersiveMapper.Cartographer
 
         /// <summary>The journal page's End leg button.</summary>
         public Action OnEndLeg;
+        public Action OnResetTally;
         public Action OnDone;
 
         public FieldView(Transform canvas)
@@ -51,6 +53,9 @@ namespace ImmersiveMapper.Cartographer
             _journalText = Ui.Text("legs", _journal.transform, 18, Ui.InkBrown, TextAnchor.UpperLeft);
             _endLeg = Ui.Button("End leg", _journal.transform, new Vector2(160f, 40f));
             _endLeg.onClick.AddListener(() => OnEndLeg?.Invoke());
+            _resetTally = Ui.Button("Reset tally", _journal.transform, new Vector2(160f, 40f));
+            _resetTally.onClick.AddListener(() => { OnResetTally?.Invoke(); RefreshJournal(); });
+            _tools.Selection.Changed += UpdateHint;
 
             _tabs = Ui.Rect("tabs", _root);
             _hint = Ui.HudText("hint", _root, 16, TextAnchor.UpperCenter);
@@ -90,6 +95,7 @@ namespace ImmersiveMapper.Cartographer
         public void Close()
         {
             _tools.Finish();
+            _tools.Deselect();
             if (_session != null && _session.HasMaster)
             {
                 _session.MasterZoom = _master.Zoom;
@@ -107,6 +113,7 @@ namespace ImmersiveMapper.Cartographer
                 _tools.Undo();
                 _panel.Refresh();
             }
+            _tools.UpdateKeys();
             _draft.Update();
             _master.Update();
         }
@@ -163,6 +170,7 @@ namespace ImmersiveMapper.Cartographer
         private void SelectPage(int page)
         {
             _tools.Finish();
+            _tools.Deselect();
             _session.ShowPage(page);
             _onJournal = false;
             ShowPage();
@@ -180,23 +188,42 @@ namespace ImmersiveMapper.Cartographer
                 _draft.Show(_session.Current);
                 _draft.Fit();
             }
-            _hint.text = master
-                ? "Your copy of a table's master: read only. Wheel to zoom · middle mouse to pan · Esc or right-click to close"
-                : "Left-click to draw · wheel to zoom · middle mouse to pan · Ctrl+Z undo · Esc or right-click to close";
+            UpdateHint();
             TintTabs();
             _panel.Refresh();
+        }
+
+        private void UpdateHint()
+        {
+            if (_session == null || _onJournal)
+            {
+                return;
+            }
+            if (_session.OnMaster)
+            {
+                _hint.text = "Your copy of a table's master: read only. Wheel to zoom · middle mouse to pan · Esc to close";
+            }
+            else if (_tools.Selection.Any)
+            {
+                _hint.text = string.Format("Selected {0}: drag to move · arrows nudge (Shift: more) · Ctrl + wheel resizes · a colour recolours · Delete erases · right-click elsewhere lets go", _tools.Selection.Describe());
+            }
+            else
+            {
+                _hint.text = "Left-click to draw · right-click to select · wheel to zoom · middle mouse to pan · Ctrl+Z undo · Esc to close";
+            }
         }
 
         private void ShowJournal()
         {
             _tools.Finish();
+            _tools.Deselect();
             _onJournal = true;
             _draft.Root.gameObject.SetActive(false);
             _master.Root.gameObject.SetActive(false);
             _panel.SetVisible(false);
             _journal.gameObject.SetActive(true);
             _journalText.text = JournalText(_session.Journal);
-            _hint.text = "End a leg to note the tally with a label. At a cartography table, legs become measuring strings.";
+            _hint.text = "End a leg to note the tally with a label (Reset tally starts over without one). At a cartography table, legs become measuring strings.";
             TintTabs();
         }
 
@@ -269,8 +296,11 @@ namespace ImmersiveMapper.Cartographer
             _journalText.rectTransform.offsetMin = new Vector2(4f * u, 10f * u);
             _journalText.rectTransform.offsetMax = new Vector2(-4f * u, -4f * u);
             var endLeg = (RectTransform)_endLeg.transform;
-            Ui.Place(endLeg, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 3f * u), new Vector2(16f * u, 4.5f * u));
+            Ui.Place(endLeg, new Vector2(0.5f, 0f), new Vector2(1f, 0f), new Vector2(-1f * u, 3f * u), new Vector2(16f * u, 4.5f * u));
             Ui.LabelSize(endLeg, u);
+            var resetTally = (RectTransform)_resetTally.transform;
+            Ui.Place(resetTally, new Vector2(0.5f, 0f), new Vector2(0f, 0f), new Vector2(1f * u, 3f * u), new Vector2(16f * u, 4.5f * u));
+            Ui.LabelSize(resetTally, u);
 
             _panel.Layout(new Vector2(-size.x * 0.5f - 2f * u - 19f * u, size.y * 0.5f), new Vector2(size.x * 0.5f + 2f * u, size.y * 0.5f), u);
 
