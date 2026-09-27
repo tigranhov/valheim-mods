@@ -89,6 +89,7 @@ namespace ImmersiveMapper.ShipCargo
 
             prefab.AddComponent<ShipPassenger>();
             prefab.AddComponent<CargoCrate>();
+            CrateShape.Measure(prefab);
             PrefabManager.Instance.AddPrefab(prefab);
             return prefab;
         }

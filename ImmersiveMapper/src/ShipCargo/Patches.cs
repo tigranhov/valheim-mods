@@ -95,7 +95,7 @@ namespace ImmersiveMapper.ShipCargo
             __result += CrateItem.IsPacked(item)
                 ? $"\n\n<color=orange>Packed:</color> {CrateItem.ContentsCount(item)} stack(s), {CrateItem.ContentsWeight(item):0.#} weight"
                 : "\n\n<color=orange>Empty</color>";
-            __result += "\nUse it to set the crate down.";
+            __result += "\nUse it to choose where to set the crate down.";
         }
     }
 
@@ -108,12 +108,12 @@ namespace ImmersiveMapper.ShipCargo
             {
                 return true;
             }
-            CratePlacement.TryPlace(player, inventory ?? player.GetInventory(), item);
+            CrateGhost.Begin(player, inventory ?? player.GetInventory(), item);
             return false;
         }
     }
 
-    // Dropping a crate sets it down instead, so it never becomes a loose item on the ground.
+    // Dropping a crate starts placing it instead, so it never becomes a loose item on the ground.
     [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.DropItem))]
     internal static class DropItemPatch
     {
@@ -123,8 +123,36 @@ namespace ImmersiveMapper.ShipCargo
             {
                 return true;
             }
-            __result = CratePlacement.TryPlace(player, inventory ?? player.GetInventory(), item);
+            CrateGhost.Begin(player, inventory ?? player.GetInventory(), item);
+            __result = false;
             return false;
+        }
+    }
+
+    // While placing a crate, the mouse buttons place/cancel instead of attacking or blocking.
+    [HarmonyPatch(typeof(Player), nameof(Player.SetControls))]
+    internal static class PlacingControlsPatch
+    {
+        private static void Prefix(ref bool attack, ref bool attackHold, ref bool secondaryAttack, ref bool secondaryAttackHold, ref bool block, ref bool blockHold)
+        {
+            if (!CrateGhost.Active)
+            {
+                return;
+            }
+            attack = attackHold = secondaryAttack = secondaryAttackHold = block = blockHold = false;
+        }
+    }
+
+    // While placing a crate, the scroll wheel turns it instead of zooming the camera.
+    [HarmonyPatch(typeof(ZInput), "Internal_GetMouseScrollWheel")]
+    internal static class PlacingScrollPatch
+    {
+        private static void Postfix(ref float __result)
+        {
+            if (CrateGhost.Active && !CrateGhost.ReadingScroll)
+            {
+                __result = 0f;
+            }
         }
     }
 

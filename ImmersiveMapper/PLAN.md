@@ -193,7 +193,10 @@ physically fits. A packed crate can't go into carts, ship holds or chests.
   look to reuse for our crate.
 
 ### v0.1 — Cargo crates
-**Status (2026-09-27):** in game: pick up → set down on a deck → rides the ship ✅. A crate item
+**Status (2026-09-27):** in game: pick up → set down on a deck → rides the ship ✅. Reload with 4
+crates on one ship: all 4 back in place and riding ✅ (after switching from saved ZDO links, which
+keep one link per target, to finding the ship by deck offset). Crates are unbreakable.
+Next: placement preview (ghost), snapping side by side / on top, no clipping. A crate item
 spawned with `spawn` couldn't be set down (item recognized by shared-data reference; spawned items
 carry their own copy) → fixed to match by prefab name, needs re-test. Vanilla crate: Default layer
 (players collide, stacking works), has Destructible (can be smashed open).

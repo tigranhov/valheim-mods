@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace ImmersiveMapper.ShipCargo
@@ -12,6 +13,9 @@ namespace ImmersiveMapper.ShipCargo
         private const string PickupResponseRpc = "IM_PickupResponse";
         // Guards against a loop if some item can't be moved into the floating crates.
         private const int MaxSpillCrates = 20;
+
+        /// <summary>Crates loaded here, for placement snapping.</summary>
+        public static readonly List<CargoCrate> All = new List<CargoCrate>();
 
         private ZNetView _nview;
         private Container _container;
@@ -32,6 +36,12 @@ namespace ImmersiveMapper.ShipCargo
             {
                 _passenger.ShipLost += SpillIntoWater;
             }
+            All.Add(this);
+        }
+
+        private void OnDestroy()
+        {
+            All.Remove(this);
         }
 
         public string HoverSuffix()
