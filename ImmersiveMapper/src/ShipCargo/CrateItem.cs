@@ -17,7 +17,17 @@ namespace ImmersiveMapper.ShipCargo
 
         public static bool IsCrate(ItemDrop.ItemData item)
         {
-            return item != null && CrateSetup.CrateShared != null && item.m_shared == CrateSetup.CrateShared;
+            if (item == null)
+            {
+                return false;
+            }
+            // Not a shared-data reference check: an item spawned in the world carries its own copy of the shared
+            // data (ItemDrop.Awake only relinks it in the editor), and keeps it when picked up.
+            if (item.m_dropPrefab != null)
+            {
+                return item.m_dropPrefab.name == CrateSetup.CrateItemName;
+            }
+            return item.m_shared.m_name == CrateSetup.CrateDisplayName;
         }
 
         /// <summary>A crate item with something inside. Empty crate items are allowed everywhere.</summary>

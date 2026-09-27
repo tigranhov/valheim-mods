@@ -17,15 +17,13 @@ namespace ImmersiveMapper.ShipCargo
     {
         public const string CratePrefabName = "IM_CargoCrate";
         public const string CrateItemName = "IM_CargoCrateItem";
+        public const string CrateDisplayName = "Cargo crate";
         // The floating crate a broken ship leaves behind.
         public const string VanillaCrate = "CargoCrate";
         private const string ItemBase = "Wood";
         private const string FallbackIconPiece = "piece_chest_wood";
 
         public static GameObject CratePrefab { get; private set; }
-
-        /// <summary>Shared item data of the crate item; every crate item references this same object.</summary>
-        public static ItemDrop.ItemData.SharedData CrateShared { get; private set; }
 
         private static CustomItem _item;
 
@@ -76,7 +74,7 @@ namespace ImmersiveMapper.ShipCargo
             nview.m_persistent = true;
 
             Container container = prefab.GetComponentInChildren<Container>(true);
-            container.m_name = "Cargo crate";
+            container.m_name = CrateDisplayName;
             container.m_width = CargoConfig.CrateWidth.Value;
             container.m_height = CargoConfig.CrateHeight.Value;
             container.m_autoDestroyEmpty = false;
@@ -94,7 +92,7 @@ namespace ImmersiveMapper.ShipCargo
         {
             var config = new ItemConfig
             {
-                Name = "Cargo crate",
+                Name = CrateDisplayName,
                 Description = "A sturdy crate for moving house. Use it to set it down on the ground or on a ship's deck, "
                     + "where it rides along without sliding. Pick it up again with everything inside.",
                 CraftingStation = CargoConfig.CrateStation.Value,
@@ -111,7 +109,6 @@ namespace ImmersiveMapper.ShipCargo
             shared.m_maxStackSize = 1;
             shared.m_itemType = ItemDrop.ItemData.ItemType.Misc;
             shared.m_teleportable = true;
-            CrateShared = shared;
             ItemManager.Instance.AddItem(_item);
             ApplyRecipeEnabled();
         }
