@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>TraderBeacons</AssemblyName>
+    <RootNamespace>ImmersiveMapper.TraderBeacons</RootNamespace>
+  </PropertyGroup>
+</Project>
