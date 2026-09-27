@@ -24,6 +24,7 @@ namespace ImmersiveMapper.Cartographer
             KitConfig.Bind(Config);
             KitKeys.Register(Config);
             MapCaseSetup.Register();
+            LogLineSetup.Register();
             _harmony = new Harmony(PluginGuid);
             _harmony.PatchAll(typeof(Plugin).Assembly);
         }

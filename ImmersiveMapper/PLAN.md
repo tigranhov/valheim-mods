@@ -408,7 +408,14 @@ Stamps borrow the game's map pin icons, trader icons and a few item/piece icons.
   - The case's master copy refreshes when you leave a table that has a master; at an empty table
     you can lay your case's copy onto it (to start an outpost's map).
 
-### 3c — Ship fittings
+### 3c — Ship fittings (log line built 2026-09-27, not yet tested in game)
+- **Built:** the log line (forge: 1 Iron, 6 Leather scraps). Use it on a ship's deck → a reel on the
+  stern (opposite the steering spot, `8 - Log line` offsets) with a line trailing in the water. The
+  ship's owner counts ground covered while the ship moves (≥ 0.3 m/s), saved on the ship, in paces
+  with a random error per run. Hover: the run; E hauls in (0); Shift+E takes it off. **End leg (J)
+  on a ship with a log line notes the log's run as a sea leg** (and hauls in). Destroyed ship → the
+  log line floats free as an item. **The sounding line is dropped** (depth isn't important to the
+  user).
 - **Log line:** attach to a ship's stern (the item is used up). A rope trails behind the ship.
   Hover the reel to read the distance run; E hauls in and resets. Stored on the ship, so it works
   for everyone aboard.

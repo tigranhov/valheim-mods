@@ -243,7 +243,8 @@ namespace ImmersiveMapper.Cartographer
                 Leg leg = legs[i];
                 string label = string.IsNullOrEmpty(leg.Label) ? "" : $" — {leg.Label}";
                 string plotted = leg.Plotted ? "  ✓" : "";
-                lines.AppendLine($"Leg {leg.Number}: {leg.Paces} paces{label}  (day {leg.Day}){plotted}");
+                string sea = leg.AtSea ? ", at sea" : "";
+                lines.AppendLine($"Leg {leg.Number}: {leg.Paces} paces{label}  (day {leg.Day}{sea}){plotted}");
             }
             return lines.ToString();
         }

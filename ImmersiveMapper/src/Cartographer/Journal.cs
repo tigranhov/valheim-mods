@@ -12,6 +12,8 @@ namespace ImmersiveMapper.Cartographer
         public int Day;
         /// <summary>Laid on a master map as a measuring string.</summary>
         public bool Plotted;
+        /// <summary>Read off a ship's log line rather than counted on foot.</summary>
+        public bool AtSea;
     }
 
     /// <summary>The legs noted in a map case, oldest first. At the table they become measuring strings.</summary>
@@ -19,7 +21,7 @@ namespace ImmersiveMapper.Cartographer
     {
         public const int MaxLegs = 200;
 
-        private const int Version = 2;
+        private const int Version = 3;
 
         public readonly List<Leg> Legs = new List<Leg>();
 
@@ -49,6 +51,7 @@ namespace ImmersiveMapper.Cartographer
                 pkg.Write(leg.Label ?? "");
                 pkg.Write(leg.Day);
                 pkg.Write(leg.Plotted);
+                pkg.Write(leg.AtSea);
             }
             return Convert.ToBase64String(Utils.Compress(pkg.GetArray()));
         }
@@ -73,6 +76,7 @@ namespace ImmersiveMapper.Cartographer
                 {
                     var leg = new Leg { Number = pkg.ReadInt(), Paces = pkg.ReadInt(), Label = pkg.ReadString(), Day = pkg.ReadInt() };
                     leg.Plotted = version >= 2 && pkg.ReadBool();
+                    leg.AtSea = version >= 3 && pkg.ReadBool();
                     journal.Legs.Add(leg);
                 }
             }

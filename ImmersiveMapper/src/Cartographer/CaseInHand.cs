@@ -210,25 +210,43 @@ namespace ImmersiveMapper.Cartographer
             Player.m_localPlayer?.Message(MessageHud.MessageType.TopLeft, "Tally reset to 0");
         }
 
+        // On a ship with a log line, the leg is the log's run (a sea leg); otherwise the tally's paces.
         private static void AskEndLeg()
         {
             CaseSession session = _session;
-            if (session == null)
+            Player player = Player.m_localPlayer;
+            if (session == null || player == null)
             {
                 return;
             }
-            TextPrompt.Ask($"End leg {session.Journal.NextNumber}: {Tally.Paces} paces. Label it:", "", 60, label =>
+            LogLine log = LogLine.OnShipUnder(player);
+            bool atSea = log != null && log.Fitted;
+            int shown = atSea ? log.Paces : Tally.Paces;
+            string topic = atSea ? $"End sea leg {session.Journal.NextNumber}: the log ran {shown} paces. Label it:"
+                : $"End leg {session.Journal.NextNumber}: {shown} paces. Label it:";
+            TextPrompt.Ask(topic, "", 60, label =>
             {
                 if (_session != session)
                 {
                     return;
                 }
+                int paces;
+                if (atSea && log != null)
+                {
+                    paces = log.Paces;
+                    log.Haul();
+                }
+                else
+                {
+                    paces = Tally.TakeLeg();
+                }
                 var leg = new Leg
                 {
                     Number = session.Journal.NextNumber,
-                    Paces = Tally.TakeLeg(),
+                    Paces = paces,
                     Label = label,
                     Day = EnvMan.instance != null ? EnvMan.instance.GetDay() : 0,
+                    AtSea = atSea,
                 };
                 session.Journal.Add(leg);
                 session.SaveJournal();

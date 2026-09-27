@@ -71,6 +71,13 @@ namespace ImmersiveMapper.Cartographer
 
         public static ConfigEntry<string> StampPalette;
 
+        public static ConfigEntry<string> LogLineRecipe;
+        public static ConfigEntry<string> LogLineStation;
+        public static ConfigEntry<float> LogLineError;
+        public static ConfigEntry<float> ReelSide;
+        public static ConfigEntry<float> ReelUp;
+        public static ConfigEntry<float> ReelBack;
+
         public static ConfigEntry<float> ReadingSize;
         public static ConfigEntry<float> ReadingLift;
         public static ConfigEntry<float> DrawingSize;
@@ -136,6 +143,21 @@ namespace ImmersiveMapper.Cartographer
             {
                 StampPalette.Value = Stamps.DefaultPalette;
             }
+
+            const string log = "8 - Log line";
+            LogLineRecipe = cfg.Bind(log, "Recipe", "Iron:1,LeatherScraps:6",
+                Synced("Ingredients as Item:Amount pairs separated by commas (default: Swamp iron, for the Karve era). Applies after a restart."));
+            LogLineStation = cfg.Bind(log, "CraftingStation", "forge",
+                Synced("Where the log line is crafted. Applies after a restart."));
+            LogLineError = cfg.Bind(log, "ErrorPercent", 5f,
+                Synced("Each run is counted off by up to this many percent, like a real log line.", new AcceptableValueRange<float>(0f, 30f)));
+            // Where the reel sits, from the ship's steering spot (the log trails behind the stern).
+            ReelSide = cfg.Bind(log, "ReelSide", 0.6f,
+                Synced("Meters to the other side of the ship from the steering spot.", new AcceptableValueRange<float>(-3f, 3f)));
+            ReelUp = cfg.Bind(log, "ReelUp", 0.2f,
+                Synced("Meters above the steering spot.", new AcceptableValueRange<float>(-2f, 3f)));
+            ReelBack = cfg.Bind(log, "ReelBack", 0.3f,
+                Synced("Meters behind the steering spot.", new AcceptableValueRange<float>(-3f, 5f)));
 
             const string screen = "4 - Screen";
             ReadingSize = cfg.Bind(screen, "ReadingSize", 0.42f,

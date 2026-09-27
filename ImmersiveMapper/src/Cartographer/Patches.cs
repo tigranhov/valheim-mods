@@ -54,6 +54,52 @@ namespace ImmersiveMapper.Cartographer
         }
     }
 
+    /// <summary>Every ship can take a log line.</summary>
+    [HarmonyPatch(typeof(Ship), "Awake")]
+    internal static class ShipLogLinePatch
+    {
+        private static void Postfix(Ship __instance)
+        {
+            if (__instance.GetComponent<LogLine>() == null)
+            {
+                __instance.gameObject.AddComponent<LogLine>();
+            }
+        }
+    }
+
+    /// <summary>A ship is really being destroyed (not just unloaded) when its owner calls ZNetScene.Destroy on it.</summary>
+    [HarmonyPatch(typeof(ZNetScene), nameof(ZNetScene.Destroy))]
+    internal static class ShipDestroyedPatch
+    {
+        private static void Prefix(GameObject go)
+        {
+            LogLine log = go != null ? go.GetComponent<LogLine>() : null;
+            ZNetView nview = go != null ? go.GetComponent<ZNetView>() : null;
+            if (log != null && nview != null && nview.GetZDO() != null && nview.IsOwner())
+            {
+                log.DropFree();
+            }
+        }
+    }
+
+    /// <summary>Using the kit's parts from the inventory: the log line is fitted to the ship you stand on.</summary>
+    [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.UseItem))]
+    internal static class UseKitItemPatch
+    {
+        private static bool Prefix(Humanoid __instance, Inventory inventory, ItemDrop.ItemData item)
+        {
+            if (!(__instance is Player player) || player != Player.m_localPlayer)
+            {
+                return true;
+            }
+            if (LogLineSetup.IsLogLine(item))
+            {
+                return !LogLine.TryFit(player, inventory ?? player.GetInventory(), item);
+            }
+            return true;
+        }
+    }
+
     /// <summary>Places the map case in the hand from the hold tuning settings, for every player who takes one out.</summary>
     [HarmonyPatch(typeof(VisEquipment), nameof(VisEquipment.AttachItem))]
     internal static class HoldPosePatch

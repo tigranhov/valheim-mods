@@ -499,7 +499,7 @@ namespace ImmersiveMapper.Cartographer
                         continue;
                     }
                     Leg chosen = leg;
-                    Button button = Ui.Button($"Leg {leg.Number}: {leg.Paces}", _bottom, new Vector2(140f, 36f));
+                    Button button = Ui.Button($"Leg {leg.Number}: {leg.Paces}{(leg.AtSea ? " (sea)" : "")}", _bottom, new Vector2(140f, 36f));
                     button.onClick.AddListener(() => StartMeasure(chosen, null));
                     _legButtons.Add(button);
                     if (_legButtons.Count == LegButtons)
