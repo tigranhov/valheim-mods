@@ -50,7 +50,7 @@ namespace ImmersiveMapper.TraderBeacons
                 Synced("Roughly how high the smoke column rises.", new AcceptableValueRange<float>(30f, 500f)));
             SmokeWidth = cfg.Bind("3 - Smoke", "WidthMeters", 10f,
                 Synced("Size of each smoke puff at the base. The column widens as it rises.", new AcceptableValueRange<float>(2f, 50f)));
-            FogAsIf = cfg.Bind("3 - Smoke", "FogAsIfMeters", 500f,
+            FogAsIf = cfg.Bind("3 - Smoke", "FogAsIfMeters", 300f,
                 Synced("The game's fog would hide the smoke long before signal range. Farther than this, the smoke gets only as much fog as something this far away; closer, normal fog. Lower = clearer.", new AcceptableValueRange<float>(20f, 2000f)));
 
             FireworksEnabled = cfg.Bind("4 - Fireworks (optional)", "Enabled", false,

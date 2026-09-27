@@ -55,7 +55,7 @@ Build order: **1. Trader Beacons → 2. Cargo Lashing (+ Packing Crates) → 3. 
   override works too. `FogAsIfMeters` = 100 (user's pick): closer than that, normal fog; farther,
   the haze stays as if 100 m away. The impostor mode is no longer needed (candidate for removal).
 - 2026-09-27 — Impostor removed (DistantView, DrawMode, ImpostorDistance). FogAsIfMeters default
-  500: the smoke still reads well with that much haze. First git commit.
+  500 at first, then 300 (user's pick). First git commit.
 
 ### Repo layout (planned)
 ```
@@ -143,7 +143,7 @@ volley duration & interval, smoke on/off, sound delay on/off, who sees it (in-ra
 - [x] Player identity on server: `peer.m_refPos`, player ZDO `ZDOVars.s_playerID`.
 - [x] Far VFX: smoke faded out by ~150 m. Cause: the vanilla smoke material's built-in camera fade
       (`_CamFadeDistance`), not fog. Fix: our material copy disables the far fade, and a per-renderer
-      `unity_FogParams` override caps the smoke's fog at `FogAsIfMeters` (500). Drawn at the real
+      `unity_FogParams` override caps the smoke's fog at `FogAsIfMeters` (300). Drawn at the real
       camp, so terrain and trees hide it naturally. (An impostor approach worked too, but was removed.)
 - [x] Smoke material: `smoke` / `Lux Lit Particles/ Bumped`, borrowed from a vanilla fire.
 - Note for existing worlds: players who found a trader before the mod was installed will see its
