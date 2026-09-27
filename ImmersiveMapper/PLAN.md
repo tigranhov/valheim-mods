@@ -377,6 +377,33 @@ vanilla map (MapRoutes). Vegvisir is a companion web app (walk-time triangulatio
 
 ---
 
+## Parked: other no-map gaps (discussed 2026-09-27, back to it when the user finds Hildir)
+What the vanilla map did that Immersive takes away, checked in the game code.
+**Vanilla no-map behavior:** a vegvisir or rune stone that reveals a place calls
+`Game.DiscoverClosestLocation`; with no map open, the answer turns the camera toward the place for
+3.5 s (`SetLookDir`, in `RPC_DiscoverLocationResponse`), once, with no distance and nothing kept.
+- **Not needed (user's call):** finding your grave, finding home, finding other players.
+- **Dyrnwyn fragments:** a chain of vegvisirs (Putrid Holes → Mysterious Locations → Lord Reto).
+  The camera turn is enough, **but** the first vegvisir is inside a Putrid Hole, and dungeon
+  interiors sit 5000 m above the world (`Location`): the camera points steeply down, and leaving the
+  dungeon resets your facing. Fix idea: turn level toward it (no tilt), and point you again as you
+  step out of the dungeon.
+- **Hildir's dungeons** (Smouldering Tomb / Black Forest, Howling Cavern / Mountains, Sealed Tower /
+  Plains): her camp's map table adds the pins. It seems to reveal several at once, so with no map
+  you'd only end up facing the last one, not knowing which (to confirm). Ideas, lightest first:
+  A) one location per use of the table, named ("The Smouldering Tomb lies this way");
+  B) Hildir describes the way (bearing + rough distance in words, later into the Map case journal);
+  C) once her quest is taken, each dungeon gives itself away until the chest is found: smoke from the
+     Smouldering Tomb, howling from the Howling Cavern, a glow atop the Sealed Tower at night
+     (reuses the Trader Beacons smoke);
+  D) a treasure map: a sketch of the land around it, no coordinates (after Cartographer sheets).
+  Leaning: A as the base, C to make it special.
+- **Deep North** (1.0: boss Kall Fimbulbringer; Winding Tunnels, Mörkhalla, The Prison): its boss is
+  likely found by vegvisir too; if that stone is inside a dungeon, same problem as the Putrid Holes.
+- **First step when we get back to it:** a debug command listing every vegvisir and rune stone in
+  the game's locations: what it points to, whether it's inside a dungeon, and whether it reveals
+  several places at once. Confirms Hildir's table and Deep North without playing through them.
+
 ## Reference: existing mods (researched 2026-09-26)
 - Maps: [ZenMap](https://thunderstore.io/c/valheim/p/ZenDragon/ZenMap/),
   [NomapPrinter](https://thunderstore.io/c/valheim/p/shudnal/NomapPrinter/),
