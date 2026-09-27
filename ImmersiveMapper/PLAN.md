@@ -248,8 +248,11 @@ Config `4 - Carrying / PickUpMode`: Inventory (pack into an item, as before) | B
   crate's sides with hand IK (`CharacterAnimEvent.OnAnimatorIK`).
 - `Encumbrance`: Weight (default: inventory + crate + contents vs. your carry limit) | Always | Never.
   Encumbered → the game's heavy walk + its rules; otherwise the normal walk. Never any sprinting.
-- The carried crate is drawn smaller (default 60%); `5 - Carry tuning` has live sliders for scale,
-  height, distance, tilt (front and back) and the hand grip (inset, height, forward).
+- The carried crate is drawn smaller (60%). `5 - Carry tuning` has live sliders for scale, height,
+  distance, tilt, hand grip (position + wrist angle), elbows, and `BodyFollow`. Back carrying removed.
+- Motion: the crate and hands follow the torso's walk motion (`Animator.bodyPosition` in the IK pass),
+  keeping shoulder-to-hand distance steady so elbows don't pump with each step. (Tried first: a
+  speed/stride bob, too fast at Valheim's jog; then a footstep-event bob; both dropped.)
 - First try: all crates made you encumbered (flat rule) and the crate looked comically large.
 - Put down automatically when sitting/steering, dying, taking out the hammer; swimming drops it in
   the water (floats away in a vanilla crate). Carrier gone / world reloaded → owner sets it down.

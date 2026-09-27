@@ -5,8 +5,8 @@ namespace ImmersiveMapper.ShipCargo
 {
     /// <summary>
     /// A crate carried in a player's arms. The crate stays a world object, contents and all; every client holds it at
-    /// the same pose relative to its copy of the carrier, the way <see cref="ShipPassenger"/> rides a ship, and bobs it
-    /// in step with the carrier's walk. The carrier is stored as the player's ZDO id, which is only valid within a
+    /// the same pose relative to its copy of the carrier, the way <see cref="ShipPassenger"/> rides a ship, moving with
+    /// the carrier's torso as it walks. The carrier is stored as the player's ZDO id, which is only valid within a
     /// session: after a reload, or if the carrier leaves, the crate's owner sets it down where it is.
     /// </summary>
     internal sealed class CrateCarry : MonoBehaviour
@@ -16,9 +16,8 @@ namespace ImmersiveMapper.ShipCargo
         private const float CarrierMissingSeconds = 3f;
         private const float ZdoSyncSeconds = 0.25f;
         private const float SettleProbe = 20f;
-        // Walking speed (m/s) at which the bob reaches full size, and how fast it fades in and out.
-        private const float FullBobSpeed = 3f;
-        private const float BobFade = 4f;
+        // How quickly (per second) the torso's resting place is re-learned, e.g. when crouching or on a slope.
+        private const float BodyRestFollow = 2f;
 
         private static readonly List<CrateCarry> Instances = new List<CrateCarry>();
         private static Player _cachedPlayer;
@@ -31,7 +30,6 @@ namespace ImmersiveMapper.ShipCargo
         private Collider[] _colliders;
         private ZDOID _carrierId = ZDOID.None;
         private Player _carrier;
-        private Animator _carrierAnimator;
         private uint _revision = uint.MaxValue;
         private float _missingFor;
         private float _syncTimer;
@@ -39,9 +37,11 @@ namespace ImmersiveMapper.ShipCargo
         // Whose weapon was put away for the crate; the carrier reference is gone by the time it's set down.
         private Player _handsHiddenOn;
         private Vector3 _baseScale = Vector3.one;
-        // Walk bob: stride phase (radians) and how strongly it shows (0 standing, 1 walking).
-        private float _phase;
-        private float _bob;
+        // The torso's walk motion, in the carrier's facing frame: where it rests on average, and how far it is from that.
+        private Vector3 _bodyRest;
+        private Vector3 _bodyMotion;
+        private bool _bodyKnown;
+        private int _bodyFrame = -1;
 
         public bool IsCarried => !_carrierId.IsNone();
 
@@ -85,13 +85,12 @@ namespace ImmersiveMapper.ShipCargo
         {
             Transform t = _carrier.transform;
             Vector3 forward = Vector3.ProjectOnPlane(t.forward, Vector3.up).normalized;
-            float lift = CargoConfig.BobHeight.Value * _bob * Mathf.Sin(2f * _phase);
-            float sway = CargoConfig.BobSway.Value * _bob * Mathf.Sin(_phase);
-            float tilt = CargoConfig.FrontTilt.Value + CargoConfig.BobTilt.Value * _bob * Mathf.Sin(2f * _phase + 0.5f);
-            // Positive tilt leans the top back, against the chest; sway rolls it side to side with each stride.
-            rotation = Quaternion.LookRotation(forward, Vector3.up) * Quaternion.Euler(-tilt, 0f, sway);
+            Quaternion facing = Quaternion.LookRotation(forward, Vector3.up);
+            // Positive tilt leans the top back, against the chest.
+            rotation = facing * Quaternion.Euler(-CargoConfig.FrontTilt.Value, 0f, 0f);
             float halfDepth = CrateShape.Size.z * 0.5f * CargoConfig.FrontScale.Value;
-            center = t.position + Vector3.up * (CargoConfig.FrontHeight.Value + lift) + forward * (CargoConfig.FrontDistance.Value + halfDepth);
+            center = t.position + Vector3.up * CargoConfig.FrontHeight.Value + forward * (CargoConfig.FrontDistance.Value + halfDepth)
+                + facing * (_bodyMotion * CargoConfig.BodyFollow.Value);
         }
 
         /// <summary>Where the hands grip the crate's sides, and how they're turned (palms in, fingers forward).</summary>
@@ -193,11 +192,35 @@ namespace ImmersiveMapper.ShipCargo
             Settle();
         }
 
+        /// <summary>
+        /// Follows the carrier's torso through the walk cycle, from the animator's body position for this frame (read
+        /// in the IK pass, before the crate is placed in LateUpdate). Moving the crate and hands with the torso keeps
+        /// the shoulder-to-hand distance steady, so the elbows don't pump with every step.
+        /// </summary>
+        public void TrackBody(Vector3 bodyPosition)
+        {
+            if (_carrier == null || Time.frameCount == _bodyFrame)
+            {
+                return;
+            }
+            _bodyFrame = Time.frameCount;
+            Transform t = _carrier.transform;
+            Vector3 forward = Vector3.ProjectOnPlane(t.forward, Vector3.up).normalized;
+            Vector3 local = Quaternion.Inverse(Quaternion.LookRotation(forward, Vector3.up)) * (bodyPosition - t.position);
+            if (!_bodyKnown)
+            {
+                _bodyRest = local;
+                _bodyKnown = true;
+            }
+            _bodyRest = Vector3.Lerp(_bodyRest, local, Mathf.Clamp01(BodyRestFollow * Time.deltaTime));
+            _bodyMotion = local - _bodyRest;
+        }
+
         private void SetCarrier(Player player)
         {
             _carrier = player;
-            _carrierAnimator = player != null ? player.GetComponentInChildren<Animator>() : null;
-            _bob = 0f;
+            _bodyKnown = false;
+            _bodyMotion = Vector3.zero;
         }
 
         private void Refresh()
@@ -217,24 +240,6 @@ namespace ImmersiveMapper.ShipCargo
                 transform.localScale = _baseScale;
                 ShowHands();
             }
-        }
-
-        // Before the animator runs, so the hand IK and the crate (placed in LateUpdate) use the same bob this frame.
-        private void Update()
-        {
-            if (!IsCarried || _carrier == null)
-            {
-                return;
-            }
-            // The walk animation's own speed values: synced to every client, and zero when standing on a moving ship.
-            float speed = 0f;
-            if (_carrierAnimator != null)
-            {
-                speed = new Vector2(_carrierAnimator.GetFloat(Character.s_forwardSpeed), _carrierAnimator.GetFloat(Character.s_sidewaySpeed)).magnitude;
-            }
-            float stride = Mathf.Max(0.2f, CargoConfig.StrideLength.Value);
-            _phase = Mathf.Repeat(_phase + speed * Time.deltaTime / stride * 2f * Mathf.PI, 2f * Mathf.PI);
-            _bob = Mathf.MoveTowards(_bob, Mathf.Clamp01(speed / FullBobSpeed), BobFade * Time.deltaTime);
         }
 
         private void LateUpdate()

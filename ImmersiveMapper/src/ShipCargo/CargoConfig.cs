@@ -46,10 +46,7 @@ namespace ImmersiveMapper.ShipCargo
         public static ConfigEntry<float> FrontHeight;
         public static ConfigEntry<float> FrontDistance;
         public static ConfigEntry<float> FrontTilt;
-        public static ConfigEntry<float> BobHeight;
-        public static ConfigEntry<float> BobSway;
-        public static ConfigEntry<float> BobTilt;
-        public static ConfigEntry<float> StrideLength;
+        public static ConfigEntry<float> BodyFollow;
         public static ConfigEntry<float> HandInset;
         public static ConfigEntry<float> HandHeight;
         public static ConfigEntry<float> HandForward;
@@ -106,31 +103,26 @@ namespace ImmersiveMapper.ShipCargo
                 Synced("Meters from the feet up to the middle of a carried crate.", new AcceptableValueRange<float>(0.2f, 2f)));
             FrontDistance = cfg.Bind(tuning, "FrontDistance", 0.127f,
                 Synced("Meters between the body and the near side of a carried crate.", new AcceptableValueRange<float>(-0.5f, 1.5f)));
-            FrontTilt = cfg.Bind(tuning, "FrontTilt", 1.3f,
+            FrontTilt = cfg.Bind(tuning, "FrontTilt", 4.2f,
                 Synced("Degrees a carried crate leans back toward the chest (negative: away).", new AcceptableValueRange<float>(-45f, 45f)));
-            BobHeight = cfg.Bind(tuning, "BobHeight", 0.03f,
-                Synced("Meters the crate rises and falls with each step while walking.", new AcceptableValueRange<float>(0f, 0.2f)));
-            BobSway = cfg.Bind(tuning, "BobSway", 1.5f,
-                Synced("Degrees the crate rolls side to side over each stride.", new AcceptableValueRange<float>(0f, 15f)));
-            BobTilt = cfg.Bind(tuning, "BobTilt", 1f,
-                Synced("Degrees the crate rocks forward and back with each step.", new AcceptableValueRange<float>(0f, 15f)));
-            StrideLength = cfg.Bind(tuning, "StrideLength", 1.4f,
-                Synced("Meters walked per full stride (two steps): shorter bobs faster.", new AcceptableValueRange<float>(0.4f, 4f)));
+            BodyFollow = cfg.Bind(tuning, "BodyFollow", 1f,
+                Synced("How much the crate and hands move with the torso as you walk. 1: fully, so the elbows stay steady; "
+                    + "0: the crate stays level and the elbows bend with each step.", new AcceptableValueRange<float>(0f, 1.5f)));
             HandInset = cfg.Bind(tuning, "HandInset", -0.023f,
                 Synced("Meters the hands reach in from the crate's sides (negative: hands further out).", new AcceptableValueRange<float>(-0.3f, 0.3f)));
-            HandHeight = cfg.Bind(tuning, "HandHeight", -0.126f,
+            HandHeight = cfg.Bind(tuning, "HandHeight", -0.151f,
                 Synced("Meters above (or, negative, below) the crate's middle that the hands grip.", new AcceptableValueRange<float>(-0.5f, 0.5f)));
             HandForward = cfg.Bind(tuning, "HandForward", -0.209f,
                 Synced("Meters toward the far side (or, negative, the near side) of the crate that the hands grip.", new AcceptableValueRange<float>(-0.5f, 0.5f)));
             HandRotationWeight = cfg.Bind(tuning, "HandRotationWeight", 1f,
                 Synced("How firmly the wrists are held to the grip angle below (0: the walk animation turns them freely).", new AcceptableValueRange<float>(0f, 1f)));
-            HandPitch = cfg.Bind(tuning, "HandPitch", 0f,
+            HandPitch = cfg.Bind(tuning, "HandPitch", 107.7f,
                 Synced("Degrees to tip the hands' grip up or down.", new AcceptableValueRange<float>(-180f, 180f)));
-            HandYaw = cfg.Bind(tuning, "HandYaw", 0f,
+            HandYaw = cfg.Bind(tuning, "HandYaw", -13f,
                 Synced("Degrees to turn the fingers inward or outward.", new AcceptableValueRange<float>(-180f, 180f)));
-            HandRoll = cfg.Bind(tuning, "HandRoll", 0f,
+            HandRoll = cfg.Bind(tuning, "HandRoll", -9.1f,
                 Synced("Degrees to roll the palms (toward the crate is the starting point).", new AcceptableValueRange<float>(-180f, 180f)));
-            ElbowWeight = cfg.Bind(tuning, "ElbowWeight", 0.5f,
+            ElbowWeight = cfg.Bind(tuning, "ElbowWeight", 1f,
                 Synced("How firmly the elbows are held out and down (0: the walk animation moves them freely).", new AcceptableValueRange<float>(0f, 1f)));
             ElbowOut = cfg.Bind(tuning, "ElbowOut", 0.25f,
                 Synced("Meters the elbows point out past the hands.", new AcceptableValueRange<float>(-0.3f, 0.8f)));

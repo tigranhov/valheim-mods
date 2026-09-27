@@ -275,8 +275,8 @@ namespace ImmersiveMapper.ShipCargo
         }
     }
 
-    // A carried crate: both hands on its sides, wrists held at the grip angle and elbows out, so the walk cycle
-    // doesn't swing the arms (the game's own IK pass, which also does feet and head).
+    // A carried crate: both hands on its sides, wrists held at the grip angle and elbows out, moving with the torso,
+    // so the walk cycle doesn't swing the arms (the game's own IK pass, which also does feet and head).
     [HarmonyPatch(typeof(CharacterAnimEvent), "OnAnimatorIK")]
     internal static class CarryHandsPatch
     {
@@ -291,9 +291,10 @@ namespace ImmersiveMapper.ShipCargo
             {
                 return;
             }
+            Animator animator = __instance.m_animator;
+            crate.TrackBody(animator.bodyPosition);
             crate.GetHands(out Vector3 left, out Quaternion leftRotation, out Vector3 right, out Quaternion rightRotation);
             crate.GetElbows(out Vector3 leftElbow, out Vector3 rightElbow);
-            Animator animator = __instance.m_animator;
             float wrist = CargoConfig.HandRotationWeight.Value;
             float elbow = CargoConfig.ElbowWeight.Value;
             Hold(animator, AvatarIKGoal.LeftHand, left, leftRotation, wrist);
