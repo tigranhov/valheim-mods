@@ -2,6 +2,17 @@ using BepInEx.Configuration;
 
 namespace ImmersiveMapper.ShipCargo
 {
+    /// <summary>What Shift+E on a placed crate does.</summary>
+    internal enum CarryMode
+    {
+        /// <summary>Pack it, contents and all, into one inventory item.</summary>
+        Inventory,
+        /// <summary>Lift it onto your back.</summary>
+        Back,
+        /// <summary>Hold it in front of you with both hands.</summary>
+        Front,
+    }
+
     /// <summary>All settings are admin-only and synced from the server, so every player's crates behave the same.</summary>
     internal static class CargoConfig
     {
@@ -18,6 +29,9 @@ namespace ImmersiveMapper.ShipCargo
         public static ConfigEntry<bool> WeightEnabled;
         public static ConfigEntry<string> ShipCapacities;
         public static ConfigEntry<float> WeightStrength;
+
+        public static ConfigEntry<CarryMode> PickUpMode;
+        public static ConfigEntry<bool> CarryEncumbers;
 
         public static void Bind(ConfigFile cfg)
         {
@@ -47,6 +61,12 @@ namespace ImmersiveMapper.ShipCargo
                     + "spread evenly the ship just sits a little lower, piled at one end it tips toward that end."));
             WeightStrength = cfg.Bind("3 - Cargo weight", "Strength", 1f,
                 Synced("Multiplier for how hard cargo weight pushes on the ship.", new AcceptableValueRange<float>(0f, 5f)));
+
+            PickUpMode = cfg.Bind("4 - Carrying", "PickUpMode", CarryMode.Front,
+                Synced("What Shift+E on a placed crate does. Inventory: pack it into one item. Back / Front: carry the crate itself, "
+                    + "one at a time, on your back or in your arms; click to set it down, right-click to put it down beside you."));
+            CarryEncumbers = cfg.Bind("4 - Carrying", "Encumbers", true,
+                Synced("Carrying a crate counts as being encumbered: slow walk, stamina drain, no running. Off: it only looks that way."));
         }
 
         private static ConfigDescription Synced(string text, AcceptableValueBase range = null)

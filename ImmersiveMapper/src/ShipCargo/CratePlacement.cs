@@ -16,6 +16,17 @@ namespace ImmersiveMapper.ShipCargo
         /// </summary>
         public static bool DropNearby(Player player, Inventory inventory, ItemDrop.ItemData item)
         {
+            if (FindDropSpot(player, out Vector3 position, out Quaternion rotation, out Ship ship))
+            {
+                return Spawn(player, inventory, item, position, rotation, ship);
+            }
+            player.Message(MessageHud.MessageType.Center, "No room to put the crate down here");
+            return false;
+        }
+
+        /// <summary>The nearest spot around the player where a crate fits: in front first, then around.</summary>
+        public static bool FindDropSpot(Player player, out Vector3 position, out Quaternion rotation, out Ship ship)
+        {
             Vector3 forward = Vector3.ProjectOnPlane(player.transform.forward, Vector3.up).normalized;
             foreach (float angle in DropAngles)
             {
@@ -27,14 +38,26 @@ namespace ImmersiveMapper.ShipCargo
                 }
                 // Square to the deck on a ship; on land, facing away from the player.
                 float yaw = ShipOf(hit.collider) != null ? 0f : Quaternion.LookRotation(direction).eulerAngles.y;
-                CrateFit.RestOn(hit, yaw, out Vector3 position, out Quaternion rotation, out Ship ship);
+                CrateFit.RestOn(hit, yaw, out position, out rotation, out ship);
                 if (CrateFit.Fits(position, rotation, ref ship, out _))
                 {
-                    return Spawn(player, inventory, item, position, rotation, ship);
+                    return true;
                 }
             }
-            player.Message(MessageHud.MessageType.Center, "No room to put the crate down here");
+            position = Vector3.zero;
+            rotation = Quaternion.identity;
+            ship = null;
             return false;
+        }
+
+        /// <summary>True if another crate sits on top of this one (it would be left hanging if this one moved).</summary>
+        public static bool HasCrateOnTop(CargoCrate crate)
+        {
+            Transform t = crate.transform;
+            Vector3 top = t.TransformPoint(CrateShape.Center + new Vector3(0f, CrateShape.Size.y * 0.5f, 0f));
+            // Starts just inside this crate, so the ray skips it and finds whatever rests on it.
+            return Physics.Raycast(top - t.up * 0.05f, t.up, out RaycastHit hit, 0.2f, CrateFit.Mask, QueryTriggerInteraction.Ignore)
+                && hit.collider.GetComponentInParent<CargoCrate>() != null;
         }
         /// <summary>Sets a crate item down at a pose chosen by <see cref="CrateGhost"/>. Returns false if it couldn't.</summary>
         public static bool Spawn(Player player, Inventory inventory, ItemDrop.ItemData item, Vector3 position, Quaternion rotation, Ship ship)

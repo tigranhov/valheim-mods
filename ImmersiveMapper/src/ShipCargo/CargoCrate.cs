@@ -4,8 +4,9 @@ using UnityEngine;
 namespace ImmersiveMapper.ShipCargo
 {
     /// <summary>
-    /// The placed crate. Shift+E picks it up with everything inside. Picking up follows the vanilla container flow:
-    /// ask the owner, who hands over ownership only if nobody has the crate open.
+    /// The placed crate. Shift+E picks it up with everything inside: packed into an inventory item, or lifted to be
+    /// carried (<see cref="CargoConfig.PickUpMode"/>). Picking up follows the vanilla container flow: ask the owner,
+    /// who hands over ownership only if nobody has the crate open.
     /// </summary>
     internal sealed class CargoCrate : MonoBehaviour
     {
@@ -21,13 +22,19 @@ namespace ImmersiveMapper.ShipCargo
         private ZNetView _nview;
         private Container _container;
         private ShipPassenger _passenger;
+        private CrateCarry _carry;
         private float _weightTimer;
+
+        public bool IsCarried => _carry != null && _carry.IsCarried;
+
+        private static bool Carrying => CargoConfig.PickUpMode.Value != CarryMode.Inventory;
 
         private void Awake()
         {
             _nview = GetComponent<ZNetView>();
             _container = GetComponentInChildren<Container>();
             _passenger = GetComponent<ShipPassenger>();
+            _carry = GetComponent<CrateCarry>();
             if (_nview == null || _nview.GetZDO() == null)
             {
                 return;
@@ -60,7 +67,7 @@ namespace ImmersiveMapper.ShipCargo
 
         public string HoverSuffix()
         {
-            string text = "\n[<color=yellow><b>$KEY_AltPlace + $KEY_Use</b></color>] Pick up crate";
+            string text = "\n[<color=yellow><b>$KEY_AltPlace + $KEY_Use</b></color>] " + (Carrying ? "Lift crate" : "Pick up crate");
             if (_passenger != null && _passenger.IsAttached)
             {
                 text += "\n<color=#9ab>Riding on the ship</color>";
@@ -70,11 +77,21 @@ namespace ImmersiveMapper.ShipCargo
 
         public void RequestPickup(Humanoid character)
         {
-            if (!(character is Player player) || player != Player.m_localPlayer || _nview.GetZDO() == null)
+            if (!(character is Player player) || player != Player.m_localPlayer || _nview.GetZDO() == null || IsCarried)
             {
                 return;
             }
-            if (!player.GetInventory().HaveEmptySlot())
+            if (CratePlacement.HasCrateOnTop(this))
+            {
+                player.Message(MessageHud.MessageType.Center, "Take the crate on top off first");
+                return;
+            }
+            if (Carrying && CrateCarry.IsCarrying(player))
+            {
+                player.Message(MessageHud.MessageType.Center, "You're already carrying a crate");
+                return;
+            }
+            if (!Carrying && !player.GetInventory().HaveEmptySlot())
             {
                 player.Message(MessageHud.MessageType.Center, "$inventory_full");
                 return;
@@ -88,7 +105,7 @@ namespace ImmersiveMapper.ShipCargo
             {
                 return;
             }
-            if (_container.IsInUse())
+            if (_container.IsInUse() || IsCarried)
             {
                 _nview.InvokeRPC(sender, PickupResponseRpc, false);
                 return;
@@ -114,6 +131,11 @@ namespace ImmersiveMapper.ShipCargo
             {
                 return;
             }
+            if (Carrying)
+            {
+                _carry.Lift(player);
+                return;
+            }
             byte[] contents = _nview.GetZDO().GetByteArray(ZDOVars.s_items);
             Inventory inventory = LoadContents(contents);
             ItemDrop.ItemData item = CrateItem.Create(contents, inventory);
@@ -136,9 +158,9 @@ namespace ImmersiveMapper.ShipCargo
             return inventory;
         }
 
-        // The ship this crate rode on was destroyed: like the ship's own hold, the cargo ends up in floating crates.
-        // The empty crate goes in too, so it isn't lost.
-        private void SpillIntoWater()
+        // The ship this crate rode on was destroyed (or its carrier went swimming): like a ship's own hold, the cargo
+        // ends up in floating crates. The empty crate goes in too, so it isn't lost. Owner only.
+        public void SpillIntoWater()
         {
             GameObject floating = ZNetScene.instance.GetPrefab(CrateSetup.VanillaCrate);
             if (floating == null)

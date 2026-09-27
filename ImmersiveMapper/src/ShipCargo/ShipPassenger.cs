@@ -125,6 +125,15 @@ namespace ImmersiveMapper.ShipCargo
             SetShip(ship);
         }
 
+        /// <summary>Stops riding (it was lifted off the deck). Owner only.</summary>
+        public void StopRiding()
+        {
+            if (_nview.IsOwner() && _onShip)
+            {
+                Detach();
+            }
+        }
+
         private void Detach()
         {
             _nview.GetZDO().Set(OnShipKey, false);

@@ -235,6 +235,51 @@ namespace ImmersiveMapper.ShipCargo
         }
     }
 
+    // Carrying a crate counts as being encumbered (slow walk, stamina drain, no running or dodging), if configured.
+    [HarmonyPatch(typeof(Player), nameof(Player.IsEncumbered))]
+    internal static class CarryEncumberedPatch
+    {
+        private static void Postfix(Player __instance, ref bool __result)
+        {
+            if (!__result && CargoConfig.CarryEncumbers.Value && CrateCarry.IsCarrying(__instance))
+            {
+                __result = true;
+            }
+        }
+    }
+
+    // Without the encumbered rules, carrying still uses the encumbered walk. The owner sets it; it syncs to everyone.
+    [HarmonyPatch(typeof(Character), "UpdateWalking")]
+    internal static class CarryWalkPatch
+    {
+        private static void Postfix(Character __instance)
+        {
+            if (__instance is Player player && CrateCarry.IsCarrying(player))
+            {
+                __instance.m_zanim.SetBool(Character.s_encumbered, true);
+            }
+        }
+    }
+
+    // A crate held in front: both hands on its sides (the game's own IK pass, which also does feet and head).
+    [HarmonyPatch(typeof(CharacterAnimEvent), "OnAnimatorIK")]
+    internal static class CarryHandsPatch
+    {
+        private static void Postfix(CharacterAnimEvent __instance)
+        {
+            if (CrateCarry.Style != CarryMode.Front || !(__instance.m_character is Player player) || !CrateCarry.IsCarrying(player))
+            {
+                return;
+            }
+            CrateCarry.HandTargets(player, out Vector3 left, out Vector3 right);
+            Animator animator = __instance.m_animator;
+            animator.SetIKPositionWeight(AvatarIKGoal.LeftHand, 1f);
+            animator.SetIKPosition(AvatarIKGoal.LeftHand, left);
+            animator.SetIKPositionWeight(AvatarIKGoal.RightHand, 1f);
+            animator.SetIKPosition(AvatarIKGoal.RightHand, right);
+        }
+    }
+
     // Loaded ships, for passengers to find their ship again after a reload.
     [HarmonyPatch(typeof(Ship), "OnEnable")]
     internal static class ShipEnablePatch

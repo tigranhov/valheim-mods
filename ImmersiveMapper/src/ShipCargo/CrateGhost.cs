@@ -20,6 +20,7 @@ namespace ImmersiveMapper.ShipCargo
         // Aim this close (m) to the side of a crate on the floor and the ghost snaps beside it.
         private const float SnapRange = 0.6f;
         private const string Hint = "Click to set the crate down, hold Shift to place it freely, scroll to turn it, right-click to cancel";
+        private const string CarryHint = "Click to set the crate down, right-click to put it down beside you, hold Shift to place it freely, scroll to turn it";
 
         private static readonly int ColorId = Shader.PropertyToID("_Color");
         private static readonly int EmissionId = Shader.PropertyToID("_EmissionColor");
@@ -32,7 +33,7 @@ namespace ImmersiveMapper.ShipCargo
         /// <summary>Set while this class reads the scroll wheel, so the camera doesn't zoom at the same time.</summary>
         internal static bool ReadingScroll;
 
-        public static bool Active => _instance != null && _instance._item != null;
+        public static bool Active => _instance != null && (_instance._item != null || _instance._carried != null);
 
         /// <summary>
         /// Attack and block input belongs to crate placement: while placing, and until the button that placed or
@@ -57,8 +58,10 @@ namespace ImmersiveMapper.ShipCargo
         }
 
         private Player _player;
+        // What is being placed: a crate item from an inventory, or a crate carried in the player's arms.
         private Inventory _inventory;
         private ItemDrop.ItemData _item;
+        private CrateCarry _carried;
         private GameObject _ghost;
         private string _reason = CrateFit.DoesntFit;
         private int _rotationSteps;
@@ -71,16 +74,16 @@ namespace ImmersiveMapper.ShipCargo
 
         public static void Begin(Player player, Inventory inventory, ItemDrop.ItemData item)
         {
-            if (_instance == null)
-            {
-                var go = new GameObject("IM_CrateGhost");
-                DontDestroyOnLoad(go);
-                _instance = go.AddComponent<CrateGhost>();
-            }
+            EnsureInstance();
             if (_instance._item == item)
             {
                 // Using the same crate again puts it away.
                 _instance.End();
+                return;
+            }
+            if (CrateCarry.IsCarrying(player))
+            {
+                player.Message(MessageHud.MessageType.Center, "You're already carrying a crate");
                 return;
             }
             if (player.InPlaceMode())
@@ -88,10 +91,27 @@ namespace ImmersiveMapper.ShipCargo
                 player.Message(MessageHud.MessageType.Center, "Put the building tool away first");
                 return;
             }
-            _instance.Setup(player, inventory, item);
+            _instance.Setup(player, inventory, item, null);
         }
 
-        private void Setup(Player player, Inventory inventory, ItemDrop.ItemData item)
+        /// <summary>Placement for a crate carried in the player's arms; lasts as long as it's carried.</summary>
+        public static void BeginCarried(Player player, CrateCarry crate)
+        {
+            EnsureInstance();
+            _instance.Setup(player, null, null, crate);
+        }
+
+        private static void EnsureInstance()
+        {
+            if (_instance == null)
+            {
+                var go = new GameObject("IM_CrateGhost");
+                DontDestroyOnLoad(go);
+                _instance = go.AddComponent<CrateGhost>();
+            }
+        }
+
+        private void Setup(Player player, Inventory inventory, ItemDrop.ItemData item, CrateCarry carried)
         {
             End();
             if (CrateSetup.CratePrefab == null)
@@ -101,9 +121,10 @@ namespace ImmersiveMapper.ShipCargo
             _player = player;
             _inventory = inventory;
             _item = item;
+            _carried = carried;
             _ghost = CreateGhost(CrateSetup.CratePrefab);
             _tintedInvalid = false;
-            player.Message(MessageHud.MessageType.Center, Hint);
+            player.Message(MessageHud.MessageType.Center, carried != null ? CarryHint : Hint);
         }
 
         private void End()
@@ -114,19 +135,29 @@ namespace ImmersiveMapper.ShipCargo
             }
             _ghost = null;
             _item = null;
+            _carried = null;
             _player = null;
             _inventory = null;
+        }
+
+        private bool SourceGone()
+        {
+            if (_carried != null)
+            {
+                return !_carried || !_carried.IsCarried || _carried.Carrier != _player;
+            }
+            return !_inventory.ContainsItem(_item);
         }
 
         // LateUpdate: crates riding a ship have been moved for this frame by then, so snapping lines up with them.
         private void LateUpdate()
         {
-            if (_item == null)
+            if (!Active)
             {
                 return;
             }
             if (_player == null || _player != Player.m_localPlayer || _player.IsDead() || _ghost == null
-                || !_inventory.ContainsItem(_item) || _player.InPlaceMode())
+                || SourceGone() || _player.InPlaceMode())
             {
                 End();
                 return;
@@ -141,7 +172,12 @@ namespace ImmersiveMapper.ShipCargo
             UpdatePose();
             if (ZInput.GetButtonDown("Block") || ZInput.GetButtonDown("JoyBlock"))
             {
+                // Cancels placing an item; a carried crate is put down right here instead.
                 _awaitRelease = true;
+                if (_carried != null)
+                {
+                    _carried.PutDownNearby();
+                }
                 End();
                 return;
             }
@@ -150,7 +186,14 @@ namespace ImmersiveMapper.ShipCargo
                 _awaitRelease = true;
                 if (_ghost.activeSelf && _valid)
                 {
-                    CratePlacement.Spawn(_player, _inventory, _item, _position, _rotation, _ship);
+                    if (_carried != null)
+                    {
+                        _carried.PutDown(_position, _rotation, _ship);
+                    }
+                    else
+                    {
+                        CratePlacement.Spawn(_player, _inventory, _item, _position, _rotation, _ship);
+                    }
                     End();
                 }
                 else
@@ -245,6 +288,10 @@ namespace ImmersiveMapper.ShipCargo
             Vector3 half = CrateShape.Size * 0.5f;
             foreach (CargoCrate crate in CargoCrate.All)
             {
+                if (crate.IsCarried)
+                {
+                    continue;
+                }
                 Transform t = crate.transform;
                 Vector3 local = Quaternion.Inverse(t.rotation) * (point - t.position) - CrateShape.Center;
                 if (Mathf.Abs(local.y) > CrateShape.Size.y)
@@ -328,6 +375,7 @@ namespace ImmersiveMapper.ShipCargo
             {
                 ghost = Instantiate(prefab, holder.transform);
                 StripAll<CargoCrate>(ghost);
+                StripAll<CrateCarry>(ghost);
                 StripAll<ShipPassenger>(ghost);
                 StripAll<Container>(ghost);
                 StripAll<Rigidbody>(ghost);

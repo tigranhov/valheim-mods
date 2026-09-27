@@ -239,6 +239,19 @@ Design notes from the code research:
 - Research: vanilla crate prefab name; placement surface rules on ships; storing an inventory in
   item data; per-item weight; blocking a packed crate from containers; death/tombstone.
 
+### Experiment (branch `experiment/carry-crates`, 2026-09-27) — carrying crates
+Config `4 - Carrying / PickUpMode`: Inventory (pack into an item, as before) | Back | Front.
+- Shift+E lifts the crate itself; it stays a world object and every client holds it at the same pose
+  relative to its copy of the carrier (like riding a ship). Colliders off while carried.
+- While carrying: the placement ghost is always on; click = set down, right-click = put down beside
+  you, Shift = no snapping. Attack/block blocked. Front hides the weapon and puts both hands on the
+  crate's sides with hand IK (`CharacterAnimEvent.OnAnimatorIK`).
+- `Encumbers` (default on): counts as encumbered (slow walk, stamina drain, no run/dodge). Off: only
+  the encumbered walk animation (`Character.UpdateWalking` → `s_encumbered`).
+- Put down automatically when sitting/steering, dying, taking out the hammer; swimming drops it in
+  the water (floats away in a vanilla crate). Carrier gone / world reloaded → owner sets it down.
+- Also: a crate with another crate on top can't be picked up or lifted (it would be left hanging).
+
 ### v0.2 — Cart lashing
 - On a cart standing on a ship deck, Shift+E → **"Lash to ship"** / **"Untie"**. A lashed cart
   rides the ship like a crate (body + wheels frozen, relative sync).
