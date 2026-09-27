@@ -196,7 +196,13 @@ physically fits. A packed crate can't go into carts, ship holds or chests.
 **Status (2026-09-27):** in game: pick up → set down on a deck → rides the ship ✅. Reload with 4
 crates on one ship: all 4 back in place and riding ✅ (after switching from saved ZDO links, which
 keep one link per target, to finding the ship by deck offset). Crates are unbreakable.
-Next: placement preview (ghost), snapping side by side / on top, no clipping. A crate item
+Placement preview ✅ (ghost, snapping beside/on top, red where it clips), shimmer at sea fixed ✅
+(world-space noise/triplanar off in the crate material), karve walls count ✅ (a bit strict: the hull
+planks are convex shapes → now 0.15 m overlap allowed with the hull only).
+Added 2026-09-27, untested: stack limits per ship type (raft 1, karve 1, longship 2, drakkar 3,
+other ships 2, ground unlimited); cargo weight trims the ship (at full capacity the crates press down
+with 10% of the ship's weight: even load sits lower, one-sided load tips); standing on a crate that
+rides a ship now carries you (the crate's body counts as the ship in `Character.UpdateGroundContact`). A crate item
 spawned with `spawn` couldn't be set down (item recognized by shared-data reference; spawned items
 carry their own copy) → fixed to match by prefab name, needs re-test. Vanilla crate: Default layer
 (players collide, stacking works), has Destructible (can be smashed open).

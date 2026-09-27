@@ -13,6 +13,7 @@ namespace ImmersiveMapper.ShipCargo
         private const string PickupResponseRpc = "IM_PickupResponse";
         // Guards against a loop if some item can't be moved into the floating crates.
         private const int MaxSpillCrates = 20;
+        private const float WeightUpdateSeconds = 0.5f;
 
         /// <summary>Crates loaded here, for placement snapping.</summary>
         public static readonly List<CargoCrate> All = new List<CargoCrate>();
@@ -20,6 +21,7 @@ namespace ImmersiveMapper.ShipCargo
         private ZNetView _nview;
         private Container _container;
         private ShipPassenger _passenger;
+        private float _weightTimer;
 
         private void Awake()
         {
@@ -42,6 +44,18 @@ namespace ImmersiveMapper.ShipCargo
         private void OnDestroy()
         {
             All.Remove(this);
+        }
+
+        // The crate's weight for its ship's trim: the crate itself plus whatever is inside.
+        private void Update()
+        {
+            _weightTimer -= Time.deltaTime;
+            if (_weightTimer > 0f || _passenger == null || _container == null || _container.GetInventory() == null)
+            {
+                return;
+            }
+            _weightTimer = WeightUpdateSeconds;
+            _passenger.Weight = CargoConfig.CrateWeight.Value + _container.GetInventory().GetTotalWeight();
         }
 
         public string HoverSuffix()

@@ -204,6 +204,36 @@ namespace ImmersiveMapper.ShipCargo
         }
     }
 
+    // Standing on a crate that rides a ship counts as standing on the ship, so the game carries you along
+    // (Character.ApplyGroundForce) and syncs your position relative to the ship, as on the deck.
+    [HarmonyPatch(typeof(Character), "UpdateGroundContact")]
+    internal static class StandOnCratePatch
+    {
+        private static void Postfix(Character __instance)
+        {
+            Rigidbody ground = __instance.m_lastGroundBody;
+            if (ground == null)
+            {
+                return;
+            }
+            ShipPassenger passenger = ground.GetComponent<ShipPassenger>();
+            Rigidbody ship = passenger != null ? passenger.ShipBody : null;
+            if (ship != null)
+            {
+                __instance.m_lastGroundBody = ship;
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(Ship), nameof(Ship.CustomFixedUpdate))]
+    internal static class ShipCargoWeightPatch
+    {
+        private static void Postfix(Ship __instance)
+        {
+            CargoWeight.Apply(__instance);
+        }
+    }
+
     // Loaded ships, for passengers to find their ship again after a reload.
     [HarmonyPatch(typeof(Ship), "OnEnable")]
     internal static class ShipEnablePatch

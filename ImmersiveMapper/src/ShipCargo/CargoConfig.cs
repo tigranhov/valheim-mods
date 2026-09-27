@@ -12,6 +12,13 @@ namespace ImmersiveMapper.ShipCargo
         public static ConfigEntry<string> CrateRecipe;
         public static ConfigEntry<string> CrateStation;
 
+        public static ConfigEntry<bool> StackLimitsEnabled;
+        public static ConfigEntry<string> StackLimits;
+
+        public static ConfigEntry<bool> WeightEnabled;
+        public static ConfigEntry<string> ShipCapacities;
+        public static ConfigEntry<float> WeightStrength;
+
         public static void Bind(ConfigFile cfg)
         {
             CratesEnabled = cfg.Bind("1 - Cargo crates", "Enabled", true,
@@ -26,6 +33,20 @@ namespace ImmersiveMapper.ShipCargo
                 Synced("Ingredients as Item:Amount pairs separated by commas. Applies after a restart."));
             CrateStation = cfg.Bind("1 - Cargo crates", "CraftingStation", "piece_workbench",
                 Synced("Where crates are crafted (piece_workbench, forge, ...). Applies after a restart."));
+
+            StackLimitsEnabled = cfg.Bind("2 - Stacking", "Enabled", true,
+                Synced("Limit how many crates high you can stack."));
+            StackLimits = cfg.Bind("2 - Stacking", "Levels", "Raft=1, Karve=1, VikingShip=2, VikingShip_Ashlands=3, OtherShips=2, Ground=0",
+                Synced("Crates-high limit per ship type (prefab name: Karve, VikingShip = longship, VikingShip_Ashlands = drakkar). "
+                    + "OtherShips covers modded ships, Ground is on land. 0 = no limit."));
+
+            WeightEnabled = cfg.Bind("3 - Cargo weight", "Enabled", true,
+                Synced("Loaded crates press their ship down where they stand: pile them at the bow and the bow dips, so balance the load."));
+            ShipCapacities = cfg.Bind("3 - Cargo weight", "Capacity", "Raft=300, Karve=1200, VikingShip=3000, VikingShip_Ashlands=5000, OtherShips=2500",
+                Synced("Cargo weight each ship type is built for. At full capacity the crates press down with a tenth of the ship's own weight: "
+                    + "spread evenly the ship just sits a little lower, piled at one end it tips toward that end."));
+            WeightStrength = cfg.Bind("3 - Cargo weight", "Strength", 1f,
+                Synced("Multiplier for how hard cargo weight pushes on the ship.", new AcceptableValueRange<float>(0f, 5f)));
         }
 
         private static ConfigDescription Synced(string text, AcceptableValueBase range = null)

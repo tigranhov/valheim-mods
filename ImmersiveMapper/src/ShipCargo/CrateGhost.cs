@@ -7,8 +7,8 @@ namespace ImmersiveMapper.ShipCargo
     /// <summary>
     /// Placement mode for a crate item. A ghost follows where you look; it snaps flush against the face of a crate
     /// you look at (beside or on top), or beside the nearest crate when you aim at the floor next to one. It turns red
-    /// where it would clip, has nothing under it, or would sink. Left click sets it down, scroll turns it,
-    /// right click cancels.
+    /// where it would clip, has nothing under it, would sink, or would stack higher than the ship allows.
+    /// Left click sets it down (or says why it can't), scroll turns it, right click cancels.
     /// </summary>
     internal sealed class CrateGhost : MonoBehaviour
     {
@@ -20,9 +20,14 @@ namespace ImmersiveMapper.ShipCargo
         private const float SnapRange = 0.6f;
         // Boxes may touch; they only clip when they overlap by more than this share of the crate's size.
         private const float OverlapShrink = 0.9f;
+        // Hull planks are convex shapes that bulge a little into the deck space, so allow this much overlap (m) with
+        // the ship's own hull. The game's build check allows 0.2 m (Player.TestGhostClipping).
+        private const float HullTolerance = 0.15f;
         private const float SupportProbe = 0.35f;
         private const float WaterMargin = 0.1f;
+        private const int MaxStackScan = 16;
         private const string Hint = "Click to set the crate down, scroll to turn it, right-click to cancel";
+        private const string DoesntFit = "The crate doesn't fit there";
 
         private static readonly int ColorId = Shader.PropertyToID("_Color");
         private static readonly int EmissionId = Shader.PropertyToID("_EmissionColor");
@@ -31,6 +36,7 @@ namespace ImmersiveMapper.ShipCargo
 
         private static CrateGhost _instance;
         private static int _mask;
+        private static int _hullLayer;
 
         /// <summary>Set while this class reads the scroll wheel, so the camera doesn't zoom at the same time.</summary>
         internal static bool ReadingScroll;
@@ -41,6 +47,8 @@ namespace ImmersiveMapper.ShipCargo
         private Inventory _inventory;
         private ItemDrop.ItemData _item;
         private GameObject _ghost;
+        private BoxCollider _ghostBox;
+        private string _reason = DoesntFit;
         private int _rotationSteps;
         private float _scroll;
         private Vector3 _position;
@@ -81,11 +89,13 @@ namespace ImmersiveMapper.ShipCargo
             if (_mask == 0)
             {
                 _mask = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece", "piece_nonsolid", "terrain", "vehicle");
+                _hullLayer = LayerMask.NameToLayer("vehicle");
             }
             _player = player;
             _inventory = inventory;
             _item = item;
             _ghost = CreateGhost(CrateSetup.CratePrefab);
+            _ghostBox = _ghost.GetComponent<BoxCollider>();
             _tintedInvalid = false;
             player.Message(MessageHud.MessageType.Center, Hint);
         }
@@ -137,7 +147,7 @@ namespace ImmersiveMapper.ShipCargo
                 }
                 else
                 {
-                    _player.Message(MessageHud.MessageType.Center, "The crate doesn't fit there");
+                    _player.Message(MessageHud.MessageType.Center, _ghost.activeSelf ? _reason : DoesntFit);
                 }
             }
         }
@@ -267,15 +277,14 @@ namespace ImmersiveMapper.ShipCargo
 
         private bool Fits()
         {
+            _reason = DoesntFit;
             Vector3 up = _rotation * Vector3.up;
             // Slightly shrunk and lifted, so resting on a surface or touching a neighbor doesn't count as clipping.
             Vector3 center = _position + _rotation * CrateShape.Center + up * (CrateShape.Size.y * 0.03f);
             int count = Physics.OverlapBoxNonAlloc(center, CrateShape.Size * (0.5f * OverlapShrink), Overlaps, _rotation, _mask, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < count; i++)
             {
-                // A ship's buoyancy box encloses its whole hull; its walls, rails and mast do count.
-                Ship owner = Overlaps[i].GetComponentInParent<Ship>();
-                if (owner == null || Overlaps[i] != owner.m_floatCollider)
+                if (!IsHarmlessOverlap(Overlaps[i]))
                 {
                     return false;
                 }
@@ -283,6 +292,7 @@ namespace ImmersiveMapper.ShipCargo
             Vector3 bottom = _position + _rotation * CrateShape.BottomCenter;
             if (!Physics.Raycast(bottom + up * 0.1f, -up, out RaycastHit support, 0.1f + SupportProbe, _mask, QueryTriggerInteraction.Ignore))
             {
+                _reason = "Nothing to stand the crate on";
                 return false;
             }
             if (_ship == null)
@@ -290,7 +300,59 @@ namespace ImmersiveMapper.ShipCargo
                 _ship = CratePlacement.ShipOf(support.collider);
             }
             float water = ZoneSystem.instance != null ? ZoneSystem.instance.m_waterLevel : 30f;
-            return _ship != null || support.point.y >= water - WaterMargin;
+            if (_ship == null && support.point.y < water - WaterMargin)
+            {
+                _reason = "The crate would sink here";
+                return false;
+            }
+            int limit = ShipRules.StackLimit(_ship);
+            if (limit > 0 && StackLevel(bottom, up) > limit)
+            {
+                _reason = $"Crates stack only {limit} high {ShipRules.Where(_ship)}";
+                return false;
+            }
+            return true;
+        }
+
+        private bool IsHarmlessOverlap(Collider other)
+        {
+            Ship owner = other.GetComponentInParent<Ship>();
+            if (owner == null)
+            {
+                return false;
+            }
+            // A ship's buoyancy box encloses its whole hull.
+            if (other == owner.m_floatCollider)
+            {
+                return true;
+            }
+            // Hull planks may bulge in a little; the mast, seats, rudder and built-in chest may not be clipped at all.
+            return other.gameObject.layer == _hullLayer
+                && (!Physics.ComputePenetration(_ghostBox, _position, _rotation, other, other.transform.position, other.transform.rotation, out _, out float depth)
+                    || depth <= HullTolerance);
+        }
+
+        // 1 for a crate on the floor, 2 on top of one crate, and so on: counts the crates underneath.
+        private int StackLevel(Vector3 bottom, Vector3 up)
+        {
+            int level = 1;
+            for (int i = 0; i < MaxStackScan; i++)
+            {
+                // Rays ignore the collider they start in, so from just inside a crate's bottom this finds what's below it.
+                if (!Physics.Raycast(bottom + up * 0.05f, -up, out RaycastHit hit, 0.2f, _mask, QueryTriggerInteraction.Ignore))
+                {
+                    break;
+                }
+                CargoCrate below = hit.collider.GetComponentInParent<CargoCrate>();
+                if (below == null)
+                {
+                    break;
+                }
+                level++;
+                bottom = below.transform.TransformPoint(CrateShape.BottomCenter);
+                up = below.transform.up;
+            }
+            return level;
         }
 
         // Diagnostics, once per ship type: which colliders the clipping check sees on it.
@@ -351,6 +413,11 @@ namespace ImmersiveMapper.ShipCargo
                 StripAll<Rigidbody>(ghost);
                 StripAll<Collider>(ghost);
                 StripAll<ZNetView>(ghost);
+                // Only for measuring overlap depth (Physics.ComputePenetration); a trigger on the ghost layer touches nothing.
+                BoxCollider box = ghost.AddComponent<BoxCollider>();
+                box.center = CrateShape.Center;
+                box.size = CrateShape.Size;
+                box.isTrigger = true;
                 int layer = LayerMask.NameToLayer("ghost");
                 foreach (Transform t in ghost.GetComponentsInChildren<Transform>(true))
                 {

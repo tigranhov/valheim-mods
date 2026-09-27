@@ -45,6 +45,7 @@ namespace ImmersiveMapper.ShipCargo
         private Vector3 _localPos;
         private Quaternion _localRot = Quaternion.identity;
         private Ship _ship;
+        private Rigidbody _shipBody;
         private readonly List<Collider> _ignoring = new List<Collider>();
         private uint _revision = uint.MaxValue;
         private float _matchTimer;
@@ -57,6 +58,14 @@ namespace ImmersiveMapper.ShipCargo
 
         /// <summary>The ship this rides on, if it's loaded here.</summary>
         public Ship CurrentShip => _ship;
+
+        /// <summary>The riding ship's physics body: standing on this passenger counts as standing on it.</summary>
+        public Rigidbody ShipBody => _ship != null ? _shipBody : null;
+
+        /// <summary>How hard this presses on its ship (see <see cref="CargoWeight"/>), kept up to date by its owner component.</summary>
+        public float Weight { get; set; }
+
+        public static IReadOnlyList<ShipPassenger> All => Instances;
 
         public static void ShipLoaded(Ship ship)
         {
@@ -145,6 +154,16 @@ namespace ImmersiveMapper.ShipCargo
                 _onShip = onShip;
                 _missingFor = 0f;
                 SetShip(null);
+            }
+        }
+
+        // Before each physics step: sit at the ship's physics pose, so players standing on this have solid footing.
+        // (LateUpdate then moves it to the ship's rendered pose, which may be interpolated.)
+        private void FixedUpdate()
+        {
+            if (_onShip && _ship != null && _shipBody != null)
+            {
+                transform.SetPositionAndRotation(_shipBody.position + _shipBody.rotation * _localPos, _shipBody.rotation * _localRot);
             }
         }
 
@@ -250,6 +269,7 @@ namespace ImmersiveMapper.ShipCargo
             }
             _ignoring.Clear();
             _ship = ship;
+            _shipBody = ship != null ? ship.GetComponent<Rigidbody>() : null;
             if (ship == null)
             {
                 return;
