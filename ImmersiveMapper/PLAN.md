@@ -228,7 +228,7 @@ Design notes from the code research:
   (First version spilled the contents + an empty crate item into vanilla floating crates.)
 
 **Test checklist (Dev profile, test world):**
-1. `devcommands`, `spawn IM_CargoCrateItem` (or craft at a workbench: 10 wood, 4 bronze nails).
+1. Build one with the hammer (Misc, near a workbench: 10 wood, 4 bronze nails), or `spawn IM_CargoCrateItem`.
 2. Right-click the crate in the inventory → it's set down in front of you. E opens, fill it.
 3. Shift+E picks it up → one heavy item; tooltip shows contents. Right-click again to set it down.
 4. Try putting the packed crate in a chest / cart → "A packed crate can't go in there".
@@ -237,7 +237,7 @@ Design notes from the code research:
 7. Destroy the ship: cargo + the empty crate float away in vanilla floating crates.
 8. Log: "CargoCrate components" and "collider layers" lines (layer decides player collision/stacking).
 
-- Craftable crate (looks like the vanilla shipwreck crate), with its own slots (config).
+- Buildable crate (looks like the vanilla shipwreck crate), with its own slots (config).
 - Place it on the ground or on a ship deck. **On a deck it rides the ship**: never slides, never
   falls off, synced for every player.
 - **Pick it up with its contents** → one heavy inventory item (weight = crate + contents). Place it
@@ -251,10 +251,7 @@ Design notes from the code research:
 Config `4 - Carrying / PickUpMode`: **Front** (default: carry it in your arms) | Inventory (pack into
 an item). Crate defaults changed at the same time: **4 slots** (4×1, so crates don't replace chests;
 lowering the size never hides items, they move to extra rows), **empty weight 20**, **ship trim off**.
-Crafted at the workbench: 10 wood + 4 bronze nails (config). In Front mode a crafted crate appears at
-the station instead of in the inventory: side by side on its top along the long edge, else on the
-ground on the crafter's side; at most `CratesAtStation` (3) wait there, otherwise crafting is refused
-before anything is used up. In Inventory mode crafting is vanilla (untested yet).
+Built with the hammer (see "Hammer-built crates" below); first version was crafted at the workbench.
 - Shift+E lifts the crate itself; it stays a world object and every client holds it at the same pose
   relative to its copy of the carrier (like riding a ship). Colliders off while carried.
 - While carrying: the placement ghost is always on; click = set down, right-click = put down beside
@@ -271,9 +268,27 @@ before anything is used up. In Inventory mode crafting is vanilla (untested yet)
 - Put down automatically when sitting/steering, dying, taking out the hammer; swimming drops it in
   the water, where the crate floats as itself. Carrier gone / world reloaded → owner sets it down.
 - Also: a crate with another crate on top can't be picked up or lifted (it would be left hanging).
-- Shift-crafting (the game's "craft 5") makes only as many crates as there's room for at the station
-  (at least 1); the recipe panel shows that number. Needs as many free inventory slots, because the
-  game adds crafted crates to the inventory before the mod moves them to the station.
+
+### Hammer-built crates (✅ tested and merged into main 2026-09-27; was branch `experiment/hammer-crates`)
+Crates were crafted at the workbench (and, when carried, appeared on it; Shift-craft limited to the
+room there). They couldn't be repaired, so they became a **hammer piece** (Misc tab, workbench nearby,
+10 wood + 4 bronze nails, config), like carts and chests:
+- The placed crate is a building piece (`Piece` + `WearNTear`, replacing the vanilla crate's
+  `Destructible` and keeping its sounds and toughness): repaired with the hammer, dismantled for its
+  materials, a broken one drops them (and spills its contents). No support or rain wear, immune to ash
+  and lava, nothing can be built on it (`m_supports` off). Wards protect it.
+- The build ghost follows the crate rules, not the building rules (`CrateBuild`): same pose as setting
+  a crate down (`CratePose`: snapping to crates, Shift for none, the hammer's rotation), `CrateFit`
+  decides (the game refuses buildings on ships and on non-supporting pieces), and says why. The game's
+  zone rules still count (no-build zones, wards, someone in the way). Built on a deck → rides the ship
+  (`IPlaced.OnPlaced`).
+- Riding a ship, hits on the crate go to the ship (patch moved from `Destructible` to `WearNTear`).
+- The crate item stays only as the packed form (PickUpMode Inventory); it has no recipe any more.
+- Removed: workbench crafting, crates appearing at the station, the Shift-craft limit, `CratesAtStation`.
+- Loose crates (afloat/tumbled) keep the vanilla `Destructible`: breakable, not repairable; broken,
+  they drop the crate's materials too, so no crate's materials are ever lost.
+- Crates get a builder when they have none (set down from an item, fished out, or made before this):
+  the game returns only a third of the materials of a piece nobody built.
 
 ### Performance pass (2026-09-27)
 Single player was already light (per-crate work is a few pose updates per frame). Changes:

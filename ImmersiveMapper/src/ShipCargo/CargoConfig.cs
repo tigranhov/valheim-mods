@@ -32,7 +32,6 @@ namespace ImmersiveMapper.ShipCargo
         public static ConfigEntry<float> CrateHealth;
         public static ConfigEntry<string> CrateRecipe;
         public static ConfigEntry<string> CrateStation;
-        public static ConfigEntry<int> CratesAtStation;
 
         public static ConfigEntry<bool> StackLimitsEnabled;
         public static ConfigEntry<string> StackLimits;
@@ -63,7 +62,7 @@ namespace ImmersiveMapper.ShipCargo
         public static void Bind(ConfigFile cfg)
         {
             CratesEnabled = cfg.Bind("1 - Cargo crates", "Enabled", true,
-                Synced("Cargo crates can be crafted. Turning this off only hides the recipe: crates already placed or carried keep working, so nothing is lost."));
+                Synced("Cargo crates can be built with the hammer. Turning this off only takes them out of the build menu: crates already built, carried or packed keep working, so nothing is lost."));
             CrateWidth = cfg.Bind("1 - Cargo crates", "Width", 4,
                 Synced("Slots per row inside a crate (default 4 slots in one row: a crate is for moving, not a chest). "
                     + "Applies after a restart; making crates smaller never hides items, they move to extra rows.", new AcceptableValueRange<int>(1, 8)));
@@ -72,16 +71,14 @@ namespace ImmersiveMapper.ShipCargo
             CrateWeight = cfg.Bind("1 - Cargo crates", "EmptyWeight", 20f,
                 Synced("Weight of the crate itself. A packed crate weighs this plus everything inside. Applies after a restart.", new AcceptableValueRange<float>(0f, 100f)));
             CrateHealth = cfg.Bind("1 - Cargo crates", "Health", 0f,
-                Synced("Hit points of a crate on land or in the water; broken, it spills its contents. Riding a ship it can't be "
-                    + "broken: it's part of the ship, and hits go to the ship. 0 = as sturdy as the shipwreck crates. Applies after a restart.",
+                Synced("Hit points of a crate on land or in the water; broken, it spills its contents and drops its materials. Riding a "
+                    + "ship it can't be broken: it's part of the ship, and hits go to the ship. Repair it with the hammer like any building. "
+                    + "0 = as sturdy as the shipwreck crates. Applies after a restart.",
                     new AcceptableValueRange<float>(0f, 5000f)));
             CrateRecipe = cfg.Bind("1 - Cargo crates", "Recipe", "Wood:10,BronzeNails:4",
-                Synced("Ingredients as Item:Amount pairs separated by commas. Applies after a restart."));
+                Synced("Materials to build a crate, as Item:Amount pairs separated by commas. Applies after a restart."));
             CrateStation = cfg.Bind("1 - Cargo crates", "CraftingStation", "piece_workbench",
-                Synced("Where crates are crafted (piece_workbench, forge, ...). Applies after a restart."));
-            CratesAtStation = cfg.Bind("1 - Cargo crates", "CratesAtStation", 3,
-                Synced("When crates are carried (PickUpMode Front), a crafted crate appears at the crafting station instead of in the "
-                    + "inventory: on top of it, or beside it. This many may wait there before you have to carry some away.", new AcceptableValueRange<int>(1, 6)));
+                Synced("The crafting station that must be nearby to build (and repair) a crate: piece_workbench, forge, ... Applies after a restart."));
 
             StackLimitsEnabled = cfg.Bind("2 - Stacking", "Enabled", true,
                 Synced("Limit how many crates high you can stack."));

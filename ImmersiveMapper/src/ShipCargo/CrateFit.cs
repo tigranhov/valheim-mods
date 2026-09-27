@@ -94,6 +94,17 @@ namespace ImmersiveMapper.ShipCargo
             return true;
         }
 
+        /// <summary>The ship a crate at this pose stands on, directly or on a crate riding it.</summary>
+        public static Ship ShipBelow(Vector3 position, Quaternion rotation)
+        {
+            Vector3 up = rotation * Vector3.up;
+            Vector3 bottom = position + rotation * CrateShape.BottomCenter;
+            // Starts inside the crate itself, which the ray ignores.
+            return Physics.Raycast(bottom + up * 0.1f, -up, out RaycastHit support, 0.1f + SupportProbe, Mask, QueryTriggerInteraction.Ignore)
+                ? CratePlacement.ShipOf(support.collider)
+                : null;
+        }
+
         private static bool IsHarmlessOverlap(Collider other, Vector3 position, Quaternion rotation)
         {
             Ship owner = other.GetComponentInParent<Ship>();

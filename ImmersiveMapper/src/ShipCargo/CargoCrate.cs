@@ -8,7 +8,7 @@ namespace ImmersiveMapper.ShipCargo
     /// inventory item, or lifted to be carried (<see cref="CargoConfig.PickUpMode"/>). Picking up follows the vanilla
     /// container flow: ask the owner, who hands over ownership only if nobody has the crate open.
     /// </summary>
-    internal sealed class CargoCrate : MonoBehaviour
+    internal sealed class CargoCrate : MonoBehaviour, IPlaced
     {
         private const string RequestPickupRpc = "IM_RequestPickup";
         private const string PickupResponseRpc = "IM_PickupResponse";
@@ -59,6 +59,12 @@ namespace ImmersiveMapper.ShipCargo
             _nview.Register<long>(RequestPickupRpc, RPC_RequestPickup);
             _nview.Register<bool>(PickupResponseRpc, RPC_PickupResponse);
             _nview.Register(TumbleRpc, RPC_Tumble);
+            // Placed crates are building pieces (WearNTear), loose ones break like the shipwreck crates (Destructible).
+            WearNTear wear = GetComponent<WearNTear>();
+            if (wear != null)
+            {
+                wear.m_onDestroyed += OnBroken;
+            }
             Destructible destructible = GetComponent<Destructible>();
             if (destructible != null)
             {
@@ -84,6 +90,22 @@ namespace ImmersiveMapper.ShipCargo
         private void Start()
         {
             TrackWeight();
+            ClaimBuilder();
+        }
+
+        // Every crate was built by someone, however it got here: set down from a packed item, fished out of the water,
+        // or made before crates were built with the hammer. The game gives back only a third of the materials of a
+        // piece nobody built. (Only the id: the builder's platform id is just for showing a name.)
+        private void ClaimBuilder()
+        {
+            Piece piece = GetComponent<Piece>();
+            Player player = Player.m_localPlayer;
+            if (piece == null || player == null || _nview == null || !_nview.IsValid() || !_nview.IsOwner() || piece.GetCreator() != 0L)
+            {
+                return;
+            }
+            piece.m_creator = player.GetPlayerID();
+            _nview.GetZDO().Set(ZDOVars.s_creator, piece.m_creator);
         }
 
         private void TrackWeight()
@@ -251,15 +273,57 @@ namespace ImmersiveMapper.ShipCargo
             return inventory;
         }
 
-        // Broken (the owner runs this): everything stacked on it comes loose and tumbles down.
+        /// <summary>Just built with the hammer: on a ship's deck (or on a crate riding one) it rides the ship right away.</summary>
+        public void OnPlaced()
+        {
+            if (_passenger == null || _nview == null || !_nview.IsOwner())
+            {
+                return;
+            }
+            Ship ship = CrateFit.ShipBelow(transform.position, transform.rotation);
+            if (ship != null)
+            {
+                _passenger.AttachTo(ship);
+            }
+        }
+
+        // Broken or dismantled (the owner runs this): everything stacked on it comes loose and tumbles down.
         private void OnBroken()
         {
+            if (_loose)
+            {
+                DropMaterials();
+            }
             CargoCrate above = CratePlacement.CrateOnTop(this);
             for (int i = 0; above != null && i < MaxStack; i++)
             {
                 CargoCrate next = CratePlacement.CrateOnTop(above);
                 above._nview.InvokeRPC(TumbleRpc);
                 above = next;
+            }
+        }
+
+        // A loose crate is still the crate that was built: broken, it drops its materials like a placed one does.
+        private void DropMaterials()
+        {
+            Piece built = CrateSetup.CratePrefab != null ? CrateSetup.CratePrefab.GetComponent<Piece>() : null;
+            if (built == null || ZoneSystem.instance.GetGlobalKey(built.FreeBuildKey()))
+            {
+                return;
+            }
+            foreach (Piece.Requirement requirement in built.m_resources)
+            {
+                if (requirement.m_resItem == null || !requirement.m_recover)
+                {
+                    continue;
+                }
+                for (int left = requirement.m_amount; left > 0;)
+                {
+                    ItemDrop drop = Instantiate(requirement.m_resItem.gameObject, transform.position + Vector3.up * 0.5f, Quaternion.identity).GetComponent<ItemDrop>();
+                    drop.SetStack(Mathf.Min(left, drop.m_itemData.m_shared.m_maxStackSize));
+                    ItemDrop.OnCreateNew(drop);
+                    left -= drop.m_itemData.m_stack;
+                }
             }
         }
 

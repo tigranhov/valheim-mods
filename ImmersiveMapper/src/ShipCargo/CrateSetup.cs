@@ -10,8 +10,9 @@ using Object = UnityEngine.Object;
 namespace ImmersiveMapper.ShipCargo
 {
     /// <summary>
-    /// Creates the forms of a cargo crate: the placed crate (a copy of the vanilla shipwreck crate, made static), the
-    /// same crate afloat (dropped in the water or off a sunken ship), and the crate item it becomes when packed.
+    /// Creates the forms of a cargo crate: the placed crate (a copy of the vanilla shipwreck crate, made static and
+    /// built with the hammer), the same crate come loose (afloat, or tumbled off a broken stack), and the crate item
+    /// it becomes when packed.
     /// </summary>
     internal static class CrateSetup
     {
@@ -22,7 +23,10 @@ namespace ImmersiveMapper.ShipCargo
         // The floating crate a broken ship leaves behind.
         public const string VanillaCrate = "CargoCrate";
         private const string ItemBase = "Wood";
-        private const string FallbackIconPiece = "piece_chest_wood";
+        // Lends the crate its build sound, and its icon if rendering one fails.
+        private const string ChestPiece = "piece_chest_wood";
+        private const string Description = "A sturdy crate for moving house. Shift+E lifts it with everything inside; set it "
+            + "down on the ground or on a ship's deck, where it rides along without sliding.";
 
         public static GameObject CratePrefab { get; private set; }
 
@@ -32,24 +36,27 @@ namespace ImmersiveMapper.ShipCargo
         /// <summary>The crate item's prefab; every crate item's m_dropPrefab points at it (ObjectDB holds this same object).</summary>
         public static GameObject CrateItemPrefab { get; private set; }
 
-        private static CustomItem _item;
+        private static CustomPiece _piece;
 
         public static void Register()
         {
             PrefabManager.OnVanillaPrefabsAvailable += Create;
-            CargoConfig.CratesEnabled.SettingChanged += (_, __) => ApplyRecipeEnabled();
-            SynchronizationManager.OnConfigurationSynchronized += (_, __) => ApplyRecipeEnabled();
+            CargoConfig.CratesEnabled.SettingChanged += (_, __) => ApplyEnabled();
+            SynchronizationManager.OnConfigurationSynchronized += (_, __) => ApplyEnabled();
         }
 
         private static void Create()
         {
             PrefabManager.OnVanillaPrefabsAvailable -= Create;
             CratePrefab = CreateCratePrefab();
-            if (CratePrefab != null)
+            if (CratePrefab == null)
             {
-                FloatingPrefab = CreateFloatingPrefab();
-                CreateItem();
+                return;
             }
+            FloatingPrefab = CreateFloatingPrefab();
+            Sprite icon = CreateIcon();
+            CreatePiece(icon);
+            CreateItem(icon);
         }
 
         private static GameObject CreateCratePrefab()
@@ -79,13 +86,13 @@ namespace ImmersiveMapper.ShipCargo
             }
 
             MakeCargoCrate(prefab);
-            MakeBreakable(prefab);
+            MakeBuildPiece(prefab);
             UseMovingMaterials(prefab);
             prefab.AddComponent<ShipPassenger>();
             prefab.AddComponent<CrateCarry>();
             prefab.AddComponent<CargoCrate>();
             CrateShape.Measure(prefab);
-            PrefabManager.Instance.AddPrefab(prefab);
+            // Registered as a hammer piece in CreatePiece, which also adds it to the game's prefabs.
             return prefab;
         }
 
@@ -94,32 +101,21 @@ namespace ImmersiveMapper.ShipCargo
         {
             GameObject prefab = PrefabManager.Instance.CreateClonedPrefab(FloatingPrefabName, VanillaCrate);
             MakeCargoCrate(prefab);
-            MakeBreakable(prefab);
+            Destructible destructible = prefab.GetComponent<Destructible>();
+            if (destructible != null)
+            {
+                // Breakable like the shipwreck crates, but never by itself; its contents spill out when it breaks
+                // (Container drops them when destroyed).
+                destructible.m_ttl = 0f;
+                if (CargoConfig.CrateHealth.Value > 0f)
+                {
+                    destructible.m_health = CargoConfig.CrateHealth.Value;
+                }
+            }
             UseMovingMaterials(prefab);
             prefab.AddComponent<CargoCrate>();
             PrefabManager.Instance.AddPrefab(prefab);
             return prefab;
-        }
-
-        // Breakable like the shipwreck crates (while riding a ship the hits go to the ship, see CrateDamagePatch), but
-        // it never breaks by itself, and its contents spill out when it does (Container drops them when destroyed).
-        private static void MakeBreakable(GameObject prefab)
-        {
-            Destructible destructible = prefab.GetComponent<Destructible>();
-            if (destructible == null)
-            {
-                Plugin.Log.LogWarning($"{prefab.name} has no Destructible; it can't be broken.");
-                return;
-            }
-            if (prefab.name == CratePrefabName)
-            {
-                Plugin.Log.LogInfo($"{VanillaCrate} health {destructible.m_health}, min tool tier {destructible.m_minToolTier}, lifetime {destructible.m_ttl} s");
-            }
-            destructible.m_ttl = 0f;
-            if (CargoConfig.CrateHealth.Value > 0f)
-            {
-                destructible.m_health = CargoConfig.CrateHealth.Value;
-            }
         }
 
         // Saved with the world, holds a crate's worth of slots, and stays when emptied (it is the crate).
@@ -134,6 +130,86 @@ namespace ImmersiveMapper.ShipCargo
             container.m_privacy = Container.PrivacySetting.Public;
             container.m_defaultItems = new DropTable();
             container.m_destroyedLootPrefab = null;
+        }
+
+        /// <summary>
+        /// A building piece like a chest: built and repaired with the hammer, dismantled for its materials, and a
+        /// broken one drops them. The vanilla crate's breakable part is swapped for the building kind, keeping its
+        /// sounds and toughness. Unlike other buildings it needs no support, doesn't rot in the rain, and ash and
+        /// lava don't hurt it (riding a ship it's part of the ship, see CrateDamagePatch). Nothing can be built on it.
+        /// </summary>
+        private static void MakeBuildPiece(GameObject prefab)
+        {
+            Destructible destructible = prefab.GetComponent<Destructible>();
+            var wear = prefab.AddComponent<WearNTear>();
+            wear.m_health = CargoConfig.CrateHealth.Value > 0f ? CargoConfig.CrateHealth.Value : destructible != null ? destructible.m_health : 100f;
+            wear.m_materialType = WearNTear.MaterialType.Wood;
+            wear.m_supports = false;
+            wear.m_noRoofWear = false;
+            wear.m_noSupportWear = false;
+            wear.m_ashDamageImmune = true;
+            wear.m_triggerPrivateArea = true;
+            wear.m_autoCreateFragments = false;
+            if (destructible != null)
+            {
+                Plugin.Log.LogInfo($"{VanillaCrate} health {destructible.m_health}; cargo crates have {wear.m_health}");
+                wear.m_damages = destructible.m_damages;
+                wear.m_hitEffect = destructible.m_hitEffect;
+                wear.m_destroyedEffect = destructible.m_destroyedEffect;
+                wear.m_hitNoise = destructible.m_hitNoise;
+                wear.m_destroyNoise = destructible.m_destroyNoise;
+                // Both would answer the same damage call.
+                Object.DestroyImmediate(destructible);
+            }
+            Piece piece = prefab.AddComponent<Piece>();
+            GameObject chest = PrefabManager.Cache.GetPrefab<GameObject>(ChestPiece);
+            Piece chestPiece = chest != null ? chest.GetComponent<Piece>() : null;
+            if (chestPiece != null)
+            {
+                piece.m_placeEffect = chestPiece.m_placeEffect;
+            }
+        }
+
+        private static void CreatePiece(Sprite icon)
+        {
+            var config = new PieceConfig
+            {
+                Name = CrateDisplayName,
+                Description = Description,
+                PieceTable = "Hammer",
+                Category = "Misc",
+                CraftingStation = CargoConfig.CrateStation.Value,
+                Requirements = ParseRecipe(CargoConfig.CrateRecipe.Value),
+            };
+            if (icon != null)
+            {
+                config.Icon = icon;
+            }
+            _piece = new CustomPiece(CratePrefab, false, config);
+            PieceManager.Instance.AddPiece(_piece);
+            ApplyEnabled();
+        }
+
+        // Only what a crate becomes when packed (PickUpMode Inventory): it has no recipe, crates are built.
+        private static void CreateItem(Sprite icon)
+        {
+            var config = new ItemConfig
+            {
+                Name = CrateDisplayName,
+                Description = Description,
+                Weight = CargoConfig.CrateWeight.Value,
+            };
+            if (icon != null)
+            {
+                config.Icon = icon;
+            }
+            var item = new CustomItem(CrateItemName, ItemBase, config);
+            ItemDrop.ItemData.SharedData shared = item.ItemDrop.m_itemData.m_shared;
+            shared.m_maxStackSize = 1;
+            shared.m_itemType = ItemDrop.ItemData.ItemType.Misc;
+            shared.m_teleportable = true;
+            CrateItemPrefab = item.ItemPrefab;
+            ItemManager.Instance.AddItem(item);
         }
 
         // The vanilla material shades with world-position noise and world-space texture projection, which shimmer on
@@ -172,32 +248,6 @@ namespace ImmersiveMapper.ShipCargo
             }
         }
 
-        private static void CreateItem()
-        {
-            var config = new ItemConfig
-            {
-                Name = CrateDisplayName,
-                Description = "A sturdy crate for moving house. Use it to set it down on the ground or on a ship's deck, "
-                    + "where it rides along without sliding. Pick it up again with everything inside.",
-                CraftingStation = CargoConfig.CrateStation.Value,
-                Requirements = ParseRecipe(CargoConfig.CrateRecipe.Value),
-                Weight = CargoConfig.CrateWeight.Value,
-            };
-            Sprite icon = CreateIcon();
-            if (icon != null)
-            {
-                config.Icon = icon;
-            }
-            _item = new CustomItem(CrateItemName, ItemBase, config);
-            ItemDrop.ItemData.SharedData shared = _item.ItemDrop.m_itemData.m_shared;
-            shared.m_maxStackSize = 1;
-            shared.m_itemType = ItemDrop.ItemData.ItemType.Misc;
-            shared.m_teleportable = true;
-            CrateItemPrefab = _item.ItemPrefab;
-            ItemManager.Instance.AddItem(_item);
-            ApplyRecipeEnabled();
-        }
-
         private static Sprite CreateIcon()
         {
             try
@@ -212,7 +262,7 @@ namespace ImmersiveMapper.ShipCargo
             {
                 Plugin.Log.LogWarning($"Couldn't render the crate icon: {e.Message}");
             }
-            GameObject chest = PrefabManager.Cache.GetPrefab<GameObject>(FallbackIconPiece);
+            GameObject chest = PrefabManager.Cache.GetPrefab<GameObject>(ChestPiece);
             Piece piece = chest != null ? chest.GetComponent<Piece>() : null;
             return piece != null ? piece.m_icon : null;
         }
@@ -234,12 +284,12 @@ namespace ImmersiveMapper.ShipCargo
             return requirements.ToArray();
         }
 
-        private static void ApplyRecipeEnabled()
+        // Turning crates off only takes them out of the hammer's menu; crates already built keep working.
+        private static void ApplyEnabled()
         {
-            Recipe recipe = _item?.Recipe?.Recipe;
-            if (recipe != null)
+            if (_piece?.Piece != null)
             {
-                recipe.m_enabled = CargoConfig.CratesEnabled.Value;
+                _piece.Piece.m_enabled = CargoConfig.CratesEnabled.Value;
             }
         }
     }

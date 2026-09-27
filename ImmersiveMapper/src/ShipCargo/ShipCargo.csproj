@@ -3,4 +3,12 @@
     <AssemblyName>ShipCargo</AssemblyName>
     <RootNamespace>ImmersiveMapper.ShipCargo</RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Jötunn's CustomPiece has AssetBundle overloads. -->
+    <Reference Include="UnityEngine.AssetBundleModule">
+      <HintPath>$(ValheimManaged)\UnityEngine.AssetBundleModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
 </Project>

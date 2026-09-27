@@ -330,10 +330,10 @@ namespace ImmersiveMapper.ShipCargo
 
     // A crate riding a ship is part of the ship: a hit on it hits the ship instead. Checked where the hit starts (the
     // attacker's side) and again where it lands (the crate's owner), in case the two disagree about the riding.
-    [HarmonyPatch(typeof(Destructible), nameof(Destructible.Damage))]
+    [HarmonyPatch(typeof(WearNTear), nameof(WearNTear.Damage))]
     internal static class CrateDamagePatch
     {
-        private static bool Prefix(Destructible __instance, HitData hit)
+        private static bool Prefix(WearNTear __instance, HitData hit)
         {
             CargoCrate crate = __instance.GetComponent<CargoCrate>();
             if (crate == null || !crate.IsRiding)
@@ -349,10 +349,10 @@ namespace ImmersiveMapper.ShipCargo
         }
     }
 
-    [HarmonyPatch(typeof(Destructible), "RPC_Damage")]
+    [HarmonyPatch(typeof(WearNTear), "RPC_Damage")]
     internal static class CrateDamageReceivedPatch
     {
-        private static bool Prefix(Destructible __instance)
+        private static bool Prefix(WearNTear __instance)
         {
             CargoCrate crate = __instance.GetComponent<CargoCrate>();
             return crate == null || !crate.IsRiding;
