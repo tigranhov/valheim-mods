@@ -4,10 +4,10 @@ using UnityEngine;
 namespace ImmersiveMapper.ShipCargo
 {
     /// <summary>
-    /// A crate carried by a player, on the back or in front (see <see cref="CarryMode"/>). The crate stays a world
-    /// object, contents and all; every client holds it at the same pose relative to its copy of the carrier, the way
-    /// <see cref="ShipPassenger"/> rides a ship. The carrier is stored as the player's ZDO id, which is only valid
-    /// within a session: after a reload, or if the carrier leaves, the crate's owner sets it down where it is.
+    /// A crate carried in a player's arms. The crate stays a world object, contents and all; every client holds it at
+    /// the same pose relative to its copy of the carrier, the way <see cref="ShipPassenger"/> rides a ship, and bobs it
+    /// in step with the carrier's walk. The carrier is stored as the player's ZDO id, which is only valid within a
+    /// session: after a reload, or if the carrier leaves, the crate's owner sets it down where it is.
     /// </summary>
     internal sealed class CrateCarry : MonoBehaviour
     {
@@ -16,6 +16,9 @@ namespace ImmersiveMapper.ShipCargo
         private const float CarrierMissingSeconds = 3f;
         private const float ZdoSyncSeconds = 0.25f;
         private const float SettleProbe = 20f;
+        // Walking speed (m/s) at which the bob reaches full size, and how fast it fades in and out.
+        private const float FullBobSpeed = 3f;
+        private const float BobFade = 4f;
 
         private static readonly List<CrateCarry> Instances = new List<CrateCarry>();
         private static Player _cachedPlayer;
@@ -28,13 +31,17 @@ namespace ImmersiveMapper.ShipCargo
         private Collider[] _colliders;
         private ZDOID _carrierId = ZDOID.None;
         private Player _carrier;
+        private Animator _carrierAnimator;
         private uint _revision = uint.MaxValue;
         private float _missingFor;
         private float _syncTimer;
         private bool _collidersOff;
-        // Whose weapon was put away for a crate held in front; the carrier reference is gone by the time it's set down.
+        // Whose weapon was put away for the crate; the carrier reference is gone by the time it's set down.
         private Player _handsHiddenOn;
         private Vector3 _baseScale = Vector3.one;
+        // Walk bob: stride phase (radians) and how strongly it shows (0 standing, 1 walking).
+        private float _phase;
+        private float _bob;
 
         public bool IsCarried => !_carrierId.IsNone();
 
@@ -73,40 +80,46 @@ namespace ImmersiveMapper.ShipCargo
             return CarriedBy(player) != null;
         }
 
-        public static CarryMode Style => CargoConfig.PickUpMode.Value == CarryMode.Back ? CarryMode.Back : CarryMode.Front;
-
-        /// <summary>How big a carried crate is drawn, as a share of its full size.</summary>
-        public static float Scale => Style == CarryMode.Back ? CargoConfig.BackScale.Value : CargoConfig.FrontScale.Value;
-
-        /// <summary>Where a carried crate's center is, and how it's turned, for this carrier (see "5 - Carry tuning").</summary>
-        public static void CarryPose(Player carrier, out Vector3 center, out Quaternion rotation)
+        /// <summary>Where the crate's center is and how it's turned, walk bob included (see "5 - Carry tuning").</summary>
+        public void GetPose(out Vector3 center, out Quaternion rotation)
         {
-            Transform t = carrier.transform;
+            Transform t = _carrier.transform;
             Vector3 forward = Vector3.ProjectOnPlane(t.forward, Vector3.up).normalized;
-            Quaternion facing = Quaternion.LookRotation(forward, Vector3.up);
-            float halfDepth = CrateShape.Size.z * 0.5f * Scale;
-            if (Style == CarryMode.Back)
-            {
-                // Positive tilt leans the top forward, over the shoulders.
-                rotation = facing * Quaternion.Euler(CargoConfig.BackTilt.Value, 0f, 0f);
-                center = t.position + Vector3.up * CargoConfig.BackHeight.Value - forward * (CargoConfig.BackDistance.Value + halfDepth);
-            }
-            else
-            {
-                // Positive tilt leans the top back, against the chest.
-                rotation = facing * Quaternion.Euler(-CargoConfig.FrontTilt.Value, 0f, 0f);
-                center = t.position + Vector3.up * CargoConfig.FrontHeight.Value + forward * (CargoConfig.FrontDistance.Value + halfDepth);
-            }
+            float lift = CargoConfig.BobHeight.Value * _bob * Mathf.Sin(2f * _phase);
+            float sway = CargoConfig.BobSway.Value * _bob * Mathf.Sin(_phase);
+            float tilt = CargoConfig.FrontTilt.Value + CargoConfig.BobTilt.Value * _bob * Mathf.Sin(2f * _phase + 0.5f);
+            // Positive tilt leans the top back, against the chest; sway rolls it side to side with each stride.
+            rotation = Quaternion.LookRotation(forward, Vector3.up) * Quaternion.Euler(-tilt, 0f, sway);
+            float halfDepth = CrateShape.Size.z * 0.5f * CargoConfig.FrontScale.Value;
+            center = t.position + Vector3.up * (CargoConfig.FrontHeight.Value + lift) + forward * (CargoConfig.FrontDistance.Value + halfDepth);
         }
 
-        /// <summary>Hand targets on the sides of a crate carried in front.</summary>
-        public static void HandTargets(Player carrier, out Vector3 left, out Vector3 right)
+        /// <summary>Where the hands grip the crate's sides, and how they're turned (palms in, fingers forward).</summary>
+        public void GetHands(out Vector3 left, out Quaternion leftRotation, out Vector3 right, out Quaternion rightRotation)
         {
-            CarryPose(carrier, out Vector3 center, out Quaternion rotation);
+            GetPose(out Vector3 center, out Quaternion rotation);
             Vector3 grip = center + rotation * new Vector3(0f, CargoConfig.HandHeight.Value, CargoConfig.HandForward.Value);
-            Vector3 side = rotation * Vector3.right * (CrateShape.Size.x * 0.5f * Scale - CargoConfig.HandInset.Value);
+            Vector3 side = rotation * Vector3.right * (CrateShape.Size.x * 0.5f * CargoConfig.FrontScale.Value - CargoConfig.HandInset.Value);
             left = grip - side;
             right = grip + side;
+            // Humanoid hand goals are relative to the T-pose (fingers out to the sides, palms down): turn the fingers
+            // forward and the palms in toward the crate, then the tuning offsets (mirrored for the left hand).
+            float pitch = CargoConfig.HandPitch.Value;
+            float yaw = CargoConfig.HandYaw.Value;
+            float roll = CargoConfig.HandRoll.Value;
+            rightRotation = rotation * Quaternion.Euler(pitch, -yaw, -roll) * Quaternion.Euler(0f, 0f, -90f) * Quaternion.Euler(0f, -90f, 0f);
+            leftRotation = rotation * Quaternion.Euler(pitch, yaw, roll) * Quaternion.Euler(0f, 0f, 90f) * Quaternion.Euler(0f, 90f, 0f);
+        }
+
+        /// <summary>Where the elbows should point: out to the sides, a little below and behind the hands.</summary>
+        public void GetElbows(out Vector3 left, out Vector3 right)
+        {
+            GetHands(out Vector3 leftHand, out _, out Vector3 rightHand, out _);
+            GetPose(out _, out Quaternion rotation);
+            Vector3 outward = rotation * Vector3.right * CargoConfig.ElbowOut.Value;
+            Vector3 offset = Vector3.down * CargoConfig.ElbowDown.Value - rotation * Vector3.forward * 0.3f;
+            left = leftHand - outward + offset;
+            right = rightHand + outward + offset;
         }
 
         private void Awake()
@@ -131,7 +144,7 @@ namespace ImmersiveMapper.ShipCargo
             ShowHands();
         }
 
-        /// <summary>Takes the crate off the ground (or deck) into the player's hands. Owner only.</summary>
+        /// <summary>Takes the crate off the ground (or deck) into the player's arms. Owner only.</summary>
         public void Lift(Player player)
         {
             if (!_nview.IsOwner())
@@ -144,7 +157,7 @@ namespace ImmersiveMapper.ShipCargo
             zdo.Set(CarrierUserKey, id.UserID);
             zdo.Set(CarrierIdKey, (int)id.ID);
             Refresh();
-            _carrier = player;
+            SetCarrier(player);
             CrateGhost.BeginCarried(player, this);
             player.Message(MessageHud.MessageType.TopLeft, $"Carrying a crate ({Weight:0} weight)");
         }
@@ -180,6 +193,13 @@ namespace ImmersiveMapper.ShipCargo
             Settle();
         }
 
+        private void SetCarrier(Player player)
+        {
+            _carrier = player;
+            _carrierAnimator = player != null ? player.GetComponentInChildren<Animator>() : null;
+            _bob = 0f;
+        }
+
         private void Refresh()
         {
             ZDO zdo = _nview.GetZDO();
@@ -188,7 +208,7 @@ namespace ImmersiveMapper.ShipCargo
             if (id != _carrierId)
             {
                 _carrierId = id;
-                _carrier = null;
+                SetCarrier(null);
                 _missingFor = 0f;
             }
             SetCollidersEnabled(!IsCarried);
@@ -197,6 +217,24 @@ namespace ImmersiveMapper.ShipCargo
                 transform.localScale = _baseScale;
                 ShowHands();
             }
+        }
+
+        // Before the animator runs, so the hand IK and the crate (placed in LateUpdate) use the same bob this frame.
+        private void Update()
+        {
+            if (!IsCarried || _carrier == null)
+            {
+                return;
+            }
+            // The walk animation's own speed values: synced to every client, and zero when standing on a moving ship.
+            float speed = 0f;
+            if (_carrierAnimator != null)
+            {
+                speed = new Vector2(_carrierAnimator.GetFloat(Character.s_forwardSpeed), _carrierAnimator.GetFloat(Character.s_sidewaySpeed)).magnitude;
+            }
+            float stride = Mathf.Max(0.2f, CargoConfig.StrideLength.Value);
+            _phase = Mathf.Repeat(_phase + speed * Time.deltaTime / stride * 2f * Mathf.PI, 2f * Mathf.PI);
+            _bob = Mathf.MoveTowards(_bob, Mathf.Clamp01(speed / FullBobSpeed), BobFade * Time.deltaTime);
         }
 
         private void LateUpdate()
@@ -217,7 +255,7 @@ namespace ImmersiveMapper.ShipCargo
             if (_carrier == null)
             {
                 GameObject found = ZNetScene.instance.FindInstance(_carrierId);
-                _carrier = found != null ? found.GetComponent<Player>() : null;
+                SetCarrier(found != null ? found.GetComponent<Player>() : null);
                 if (_carrier == null)
                 {
                     WaitForCarrier();
@@ -225,11 +263,11 @@ namespace ImmersiveMapper.ShipCargo
                 }
             }
             // Drawn smaller while carried (colliders are off, so only the look changes); full size again when set down.
-            float scale = Scale;
-            CarryPose(_carrier, out Vector3 center, out Quaternion rotation);
+            float scale = CargoConfig.FrontScale.Value;
+            GetPose(out Vector3 center, out Quaternion rotation);
             transform.localScale = _baseScale * scale;
             transform.SetPositionAndRotation(center - rotation * (CrateShape.Center * scale), rotation);
-            UpdateHands();
+            HideHands();
             if (!_nview.IsOwner())
             {
                 return;
@@ -292,20 +330,12 @@ namespace ImmersiveMapper.ShipCargo
             _crate.SpillIntoWater();
         }
 
-        // A crate held in front goes where the weapon was.
-        private void UpdateHands()
+        // The crate goes where the weapon was.
+        private void HideHands()
         {
-            bool hide = Style == CarryMode.Front && _carrier == Player.m_localPlayer;
-            if (hide && _handsHiddenOn == null)
+            if (_carrier == Player.m_localPlayer && _handsHiddenOn == null && _carrier.HideHandItems())
             {
-                if (_carrier.HideHandItems())
-                {
-                    _handsHiddenOn = _carrier;
-                }
-            }
-            else if (!hide)
-            {
-                ShowHands();
+                _handsHiddenOn = _carrier;
             }
         }
 

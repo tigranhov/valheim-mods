@@ -275,22 +275,41 @@ namespace ImmersiveMapper.ShipCargo
         }
     }
 
-    // A crate held in front: both hands on its sides (the game's own IK pass, which also does feet and head).
+    // A carried crate: both hands on its sides, wrists held at the grip angle and elbows out, so the walk cycle
+    // doesn't swing the arms (the game's own IK pass, which also does feet and head).
     [HarmonyPatch(typeof(CharacterAnimEvent), "OnAnimatorIK")]
     internal static class CarryHandsPatch
     {
         private static void Postfix(CharacterAnimEvent __instance)
         {
-            if (CrateCarry.Style != CarryMode.Front || !(__instance.m_character is Player player) || !CrateCarry.IsCarrying(player))
+            if (!(__instance.m_character is Player player))
             {
                 return;
             }
-            CrateCarry.HandTargets(player, out Vector3 left, out Vector3 right);
+            CrateCarry crate = CrateCarry.CarriedBy(player);
+            if (crate == null)
+            {
+                return;
+            }
+            crate.GetHands(out Vector3 left, out Quaternion leftRotation, out Vector3 right, out Quaternion rightRotation);
+            crate.GetElbows(out Vector3 leftElbow, out Vector3 rightElbow);
             Animator animator = __instance.m_animator;
-            animator.SetIKPositionWeight(AvatarIKGoal.LeftHand, 1f);
-            animator.SetIKPosition(AvatarIKGoal.LeftHand, left);
-            animator.SetIKPositionWeight(AvatarIKGoal.RightHand, 1f);
-            animator.SetIKPosition(AvatarIKGoal.RightHand, right);
+            float wrist = CargoConfig.HandRotationWeight.Value;
+            float elbow = CargoConfig.ElbowWeight.Value;
+            Hold(animator, AvatarIKGoal.LeftHand, left, leftRotation, wrist);
+            Hold(animator, AvatarIKGoal.RightHand, right, rightRotation, wrist);
+            animator.SetIKHintPositionWeight(AvatarIKHint.LeftElbow, elbow);
+            animator.SetIKHintPosition(AvatarIKHint.LeftElbow, leftElbow);
+            animator.SetIKHintPositionWeight(AvatarIKHint.RightElbow, elbow);
+            animator.SetIKHintPosition(AvatarIKHint.RightElbow, rightElbow);
+        }
+
+        private static void Hold(Animator animator, AvatarIKGoal hand, Vector3 position, Quaternion rotation, float rotationWeight)
+        {
+            animator.SetIKPositionWeight(hand, 1f);
+            animator.SetIKPosition(hand, position);
+            animator.SetIKRotationWeight(hand, rotationWeight);
+            animator.SetIKRotation(hand, rotation);
         }
     }
 
