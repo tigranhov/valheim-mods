@@ -243,7 +243,10 @@ Design notes from the code research:
 Config `4 - Carrying / PickUpMode`: **Front** (default: carry it in your arms) | Inventory (pack into
 an item). Crate defaults changed at the same time: **4 slots** (4×1, so crates don't replace chests;
 lowering the size never hides items, they move to extra rows), **empty weight 20**, **ship trim off**.
-Crafted at the workbench: 10 wood + 4 bronze nails (config).
+Crafted at the workbench: 10 wood + 4 bronze nails (config). In Front mode a crafted crate appears at
+the station instead of in the inventory: side by side on its top along the long edge, else on the
+ground on the crafter's side; at most `CratesAtStation` (3) wait there, otherwise crafting is refused
+before anything is used up. In Inventory mode crafting is vanilla (untested yet).
 - Shift+E lifts the crate itself; it stays a world object and every client holds it at the same pose
   relative to its copy of the carrier (like riding a ship). Colliders off while carried.
 - While carrying: the placement ghost is always on; click = set down, right-click = put down beside

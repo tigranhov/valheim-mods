@@ -31,6 +31,7 @@ namespace ImmersiveMapper.ShipCargo
         public static ConfigEntry<float> CrateWeight;
         public static ConfigEntry<string> CrateRecipe;
         public static ConfigEntry<string> CrateStation;
+        public static ConfigEntry<int> CratesAtStation;
 
         public static ConfigEntry<bool> StackLimitsEnabled;
         public static ConfigEntry<string> StackLimits;
@@ -73,6 +74,9 @@ namespace ImmersiveMapper.ShipCargo
                 Synced("Ingredients as Item:Amount pairs separated by commas. Applies after a restart."));
             CrateStation = cfg.Bind("1 - Cargo crates", "CraftingStation", "piece_workbench",
                 Synced("Where crates are crafted (piece_workbench, forge, ...). Applies after a restart."));
+            CratesAtStation = cfg.Bind("1 - Cargo crates", "CratesAtStation", 3,
+                Synced("When crates are carried (PickUpMode Front), a crafted crate appears at the crafting station instead of in the "
+                    + "inventory: on top of it, or beside it. This many may wait there before you have to carry some away.", new AcceptableValueRange<int>(1, 6)));
 
             StackLimitsEnabled = cfg.Bind("2 - Stacking", "Enabled", true,
                 Synced("Limit how many crates high you can stack."));
