@@ -12,6 +12,20 @@ namespace ImmersiveMapper.ShipCargo
         }
     }
 
+    // A crate loaded after its size was lowered: bring every item back inside the grid, and save that if it's ours.
+    [HarmonyPatch(typeof(Container), "Load")]
+    internal static class CrateLoadPatch
+    {
+        private static void Postfix(Container __instance, bool __result)
+        {
+            if (__result && __instance.GetComponentInParent<CargoCrate>() != null
+                && CargoCrate.FitToGrid(__instance.GetInventory()) && __instance.IsOwner())
+            {
+                __instance.Save();
+            }
+        }
+    }
+
     // Every way into an inventory (dragging, quick stack, take all, auto-store mods) ends in one of these three.
     [HarmonyPatch(typeof(Inventory), nameof(Inventory.AddItem), typeof(ItemDrop.ItemData))]
     internal static class InventoryAddItemPatch

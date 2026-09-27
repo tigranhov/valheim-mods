@@ -148,6 +148,46 @@ namespace ImmersiveMapper.ShipCargo
             _nview.Destroy();
         }
 
+        /// <summary>
+        /// Moves items that lie outside the crate's grid (after the crate size was lowered in the config) into free
+        /// slots, adding rows as needed. The game keeps such items but never shows them, so they'd be stuck.
+        /// Returns true if anything moved.
+        /// </summary>
+        public static bool FitToGrid(Inventory inventory)
+        {
+            int width = inventory.GetWidth();
+            List<ItemDrop.ItemData> outside = null;
+            foreach (ItemDrop.ItemData item in inventory.GetAllItems())
+            {
+                if (item.m_gridPos.x < 0 || item.m_gridPos.x >= width || item.m_gridPos.y < 0)
+                {
+                    (outside ??= new List<ItemDrop.ItemData>()).Add(item);
+                }
+            }
+            if (outside == null)
+            {
+                return false;
+            }
+            int x = 0;
+            int y = 0;
+            int rows = inventory.GetHeight();
+            foreach (ItemDrop.ItemData item in outside)
+            {
+                while (inventory.GetItemAt(x, y) != null)
+                {
+                    if (++x >= width)
+                    {
+                        x = 0;
+                        y++;
+                    }
+                }
+                item.m_gridPos = new Vector2i(x, y);
+                rows = Mathf.Max(rows, y + 1);
+            }
+            inventory.SetHeight(rows);
+            return true;
+        }
+
         private Inventory LoadContents(byte[] contents)
         {
             var inventory = new Inventory("crate", null, _container.m_width, _container.m_height);

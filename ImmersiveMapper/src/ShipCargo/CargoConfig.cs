@@ -62,11 +62,12 @@ namespace ImmersiveMapper.ShipCargo
         {
             CratesEnabled = cfg.Bind("1 - Cargo crates", "Enabled", true,
                 Synced("Cargo crates can be crafted. Turning this off only hides the recipe: crates already placed or carried keep working, so nothing is lost."));
-            CrateWidth = cfg.Bind("1 - Cargo crates", "Width", 5,
-                Synced("Slots per row inside a crate. Applies after a restart.", new AcceptableValueRange<int>(1, 8)));
-            CrateHeight = cfg.Bind("1 - Cargo crates", "Height", 2,
+            CrateWidth = cfg.Bind("1 - Cargo crates", "Width", 4,
+                Synced("Slots per row inside a crate (default 4 slots in one row: a crate is for moving, not a chest). "
+                    + "Applies after a restart; making crates smaller never hides items, they move to extra rows.", new AcceptableValueRange<int>(1, 8)));
+            CrateHeight = cfg.Bind("1 - Cargo crates", "Height", 1,
                 Synced("Rows of slots inside a crate. Applies after a restart.", new AcceptableValueRange<int>(1, 6)));
-            CrateWeight = cfg.Bind("1 - Cargo crates", "EmptyWeight", 10f,
+            CrateWeight = cfg.Bind("1 - Cargo crates", "EmptyWeight", 20f,
                 Synced("Weight of the crate itself. A packed crate weighs this plus everything inside. Applies after a restart.", new AcceptableValueRange<float>(0f, 100f)));
             CrateRecipe = cfg.Bind("1 - Cargo crates", "Recipe", "Wood:10,BronzeNails:4",
                 Synced("Ingredients as Item:Amount pairs separated by commas. Applies after a restart."));
@@ -79,7 +80,7 @@ namespace ImmersiveMapper.ShipCargo
                 Synced("Crates-high limit per ship type (prefab name: Karve, VikingShip = longship, VikingShip_Ashlands = drakkar). "
                     + "OtherShips covers modded ships, Ground is on land. 0 = no limit."));
 
-            WeightEnabled = cfg.Bind("3 - Cargo weight", "Enabled", true,
+            WeightEnabled = cfg.Bind("3 - Cargo weight", "Enabled", false,
                 Synced("Loaded crates press their ship down where they stand: pile them at the bow and the bow dips, so balance the load."));
             ShipCapacities = cfg.Bind("3 - Cargo weight", "Capacity", "Raft=300, Karve=1200, VikingShip=3000, VikingShip_Ashlands=5000, OtherShips=2500",
                 Synced("Cargo weight each ship type is built for. At full capacity the crates press down with a tenth of the ship's own weight: "

@@ -239,8 +239,11 @@ Design notes from the code research:
 - Research: vanilla crate prefab name; placement surface rules on ships; storing an inventory in
   item data; per-item weight; blocking a packed crate from containers; death/tombstone.
 
-### Experiment (branch `experiment/carry-crates`, 2026-09-27) — carrying crates
-Config `4 - Carrying / PickUpMode`: Inventory (pack into an item, as before) | Back | Front.
+### Carrying crates (✅ tested and merged into main 2026-09-27; was branch `experiment/carry-crates`)
+Config `4 - Carrying / PickUpMode`: **Front** (default: carry it in your arms) | Inventory (pack into
+an item). Crate defaults changed at the same time: **4 slots** (4×1, so crates don't replace chests;
+lowering the size never hides items, they move to extra rows), **empty weight 20**, **ship trim off**.
+Crafted at the workbench: 10 wood + 4 bronze nails (config).
 - Shift+E lifts the crate itself; it stays a world object and every client holds it at the same pose
   relative to its copy of the carrier (like riding a ship). Colliders off while carried.
 - While carrying: the placement ghost is always on; click = set down, right-click = put down beside
