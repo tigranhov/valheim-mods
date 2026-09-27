@@ -60,6 +60,11 @@ Build order: **1. Trader Beacons → 2. Cargo Lashing (+ Packing Crates) → 3. 
   (server logic also runs on a player-hosted game), but no server deployment work.
 - 2026-09-27 — Milestone 2 becomes "Ship Cargo": cargo crates (user's idea, based on the crates a
   broken ship leaves behind) + cart lashing, each switchable. See Milestone 2 for details.
+- 2026-09-27 — Milestone 3 design agreed: no compass (the sky is the compass); one Map case item
+  (workbench) holds drafts, a master copy, the pace tally and the journal; sea instruments are ship
+  fittings; field notes in the case, fair copy at the vanilla cartography table (taken over, one
+  master per table, the case's copy refreshes only at the table); upgrades are parts fitted into the
+  case. Answers the open question on instruments: held, like the hammer.
 
 ### Repo layout (planned)
 ```
@@ -282,41 +287,80 @@ Adventure Backpacks / Valheim Backpack, ValheimRAFT (custom ships & land vehicle
 **Problem:** no-map play means drawing your own map; nothing in-game supports that.
 Existing mods either auto-generate maps (ZenMap, NomapPrinter, NoMapWayfinding) or draw on the
 vanilla map (MapRoutes). Vegvisir is a companion web app (walk-time triangulation).
-**Our mod does not touch the cartography table**, so it can live alongside those.
 
-### 3a — Instruments (progression-gated)
-| Tool | Tier | Gives you |
-|---|---|---|
-| Compass | Bronze | Bearing in degrees; drifts in storms / Mistlands |
-| Pace counter / surveyor's wheel | Meadows–Black Forest | Meters walked since reset |
-| Chip log | Longship era | Distance sailed (dead reckoning at sea) |
-| Sighting staff | Iron | Bearing to an aimed landmark (for triangulation) |
-| Sounding line | Ocean | Water depth (chart shallows & reefs) |
-| Altimeter | Mountain | Height above sea level |
-| Dvergr rangefinder | Mistlands | Distance to aimed point, with error |
-- Optional **Cartography skill**: lowers instrument error as it levels.
-- Readings shown only while the tool is held/used.
+**Design (agreed with the user 2026-09-27):**
+- **No compass.** The sky is the compass (the Yggdrasil branch; the sun rises due east, stands in
+  the south at midday about 60° up and sets due west, per `EnvMan`). Finding your place stays one
+  of the big challenges. The kit covers what the sky can't tell you: distance, depth, angles.
+  A sunstone (finds the sun when the sky is hidden) is not planned for now.
+- **Few inventory slots.** Everything you use on foot lives in **one item, the Map case**.
+  Sea instruments are **ship fittings**: attached once, then part of the ship.
+- **Field notes and fair copy.** In the field you make rough marks and collect distances; at the
+  cartography table you get a sense of true size and refine positions and sizes.
+- **Nothing knows where anything is.** No "you are here", no world positions on a sheet; every
+  helper works only from numbers you measured.
+- Readings and the map show only while the case is held. Configs admin-only and server-synced.
 
-### 3b — Survey Journal
-- Press a key to record a note: bearing + distance since last note, height, your own label.
-- Journal UI; export to a local JSON file per world (feeds the companion app).
+**Build order:** 1. Map case → 2. Cartography table → 3. Ship fittings → then case upgrades,
+sharing, companion app.
 
-### 3c — Parchment canvas (in-game drawing)
-- Parchment item / cartographer's desk opens a drawing UI: quill, charcoal, eraser, text,
-  grid, scale bar, **protractor & ruler** (draw a line at bearing X), stamps
-  (trader, dungeon, boss altar, base, danger…).
-- **Plot journal:** draw recorded routes as dotted lines.
-- Stored as **vector strokes** (small, syncable), compressed in item/ZDO data; cap stroke count.
+### 3a — Map case (one item)
+- Crafted at the **workbench** (Meadows), so pace counting and sketching start early.
+- **Held like the hammer**, in both hands. **M** (the map key, unused in no-map worlds) takes it
+  out / puts it away.
+- **Reading while walking:** the sheet shows while held; you can walk but not run (config to allow
+  running). A key switches to drawing (cursor, field tools).
+- Holds **draft sheets** (field sketches, count in config) and **a copy of one table's master**
+  (read-only in the field).
+- **Tally:** counts your paces while the case is anywhere in the inventory (on foot only; not
+  swimming, riding or sailing). Read it on the case's edge while held.
+- **Journal:** end a leg with a key → saves the tally count with your own label ("Leg 3: 412 paces,
+  to the river crossing") and starts a new count. No rune-stick items.
+- **Field tools:** charcoal (one thick, rough line), stamps, short text notes, eraser, undo.
+  Config: field drawing allows everything / stamps and charcoal (default) / stamps only / nothing.
+- Lose the case (death) → drafts and the master copy go with it (tombstone as usual). A new case
+  gets the master again at a table.
+- Strokes stored as **vector strokes**, compressed in the item's custom data; stroke/point caps.
 
-### 3d — Sharing
-- Join sheets into an atlas; hang a map on a wall piece for the group; copy at the desk
-  (costs parchment + ink).
+### 3b — Cartography table (taken over)
+- The vanilla table is useless in no-map worlds, so we take over its two action spots (read and
+  write `Switch`es). Our data goes under our own ZDO key; the vanilla map data is untouched.
+  (Conflicts with NomapPrinter, which uses the table: acceptable, user's call.)
+- **One master map per table** (outposts can have their own). The case's master copy refreshes
+  **only at the table**: a friend's edits reach you when you come back.
+- Full toolset: ink colours, fine lines, text, stamps.
+- **Helpers for true size:** sheet scale (e.g. one square = 100 paces); **measuring string**
+  (a journal leg becomes a string of true length: pin one end, swing it to where you remember
+  going); **two-point fix** (mark two places, enter the real distance → rescale the sketch);
+  **trace and copy** a draft onto the master (costs parchment/ink).
+- Details to settle in step 2: copying a case's master onto a new table, moving drafts onto the
+  master, who may edit (ward access like vanilla).
 
-### 3e — Companion web app (optional)
-- Reads the journal export, plots it, lets you draw with a tablet/stylus on a second screen.
+### 3c — Ship fittings
+- **Log line:** attach to a ship's stern (the item is used up). A rope trails behind the ship.
+  Hover the reel to read the distance run; E hauls in and resets. Stored on the ship, so it works
+  for everyone aboard.
+- **Sounding line:** fitted at the bow. E drops the lead → depth ("Seven fathoms", "No bottom at
+  fifty").
+- To settle later: destroyed ship → fittings drop or are lost; units at sea.
+
+### 3d — Case upgrades
+- **Craft a part at its station, then right-click it to fit it into the case** (the part is used
+  up). Lets upgrades come from any station (vanilla quality upgrades only use the item's own
+  station). First draft, to tune:
+  | Part | Station | Adds |
+  |---|---|---|
+  | Extra pages | Workbench | More draft sheets |
+  | Sighting vane | Forge | Aim at landmark A, then B → the angle between them (find yourself on your map from 2–3 landmarks) |
+  | Dvergr lens | Black forge / Galdr table | Rangefinder: distance to an aimed point, with error (config, maybe off) |
+- Dropped: compass, altimeter. Optional later: a Cartography skill that lowers measurement error.
+
+### 3e — Sharing (later)
+- Hand a sheet to a friend; join sheets into an atlas; hang a map on a wall for the group.
+
+### 3f — Companion web app (optional, later)
+- Reads a journal export, plots it, lets you draw with a tablet/stylus on a second screen.
 - Export the drawing back into the game as a sheet.
-- Idea to test early (zero-code): NomapPrinter accepts custom PNG layers — a world-aligned drawing
-  could be shown in-game that way.
 
 ---
 
