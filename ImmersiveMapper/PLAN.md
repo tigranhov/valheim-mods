@@ -199,10 +199,13 @@ keep one link per target, to finding the ship by deck offset). Crates are unbrea
 Placement preview ✅ (ghost, snapping beside/on top, red where it clips), shimmer at sea fixed ✅
 (world-space noise/triplanar off in the crate material), karve walls count ✅ (a bit strict: the hull
 planks are convex shapes → now 0.15 m overlap allowed with the hull only).
-Added 2026-09-27, untested: stack limits per ship type (raft 1, karve 1, longship 2, drakkar 3,
-other ships 2, ground unlimited); cargo weight trims the ship (at full capacity the crates press down
-with 10% of the ship's weight: even load sits lower, one-sided load tips); standing on a crate that
-rides a ship now carries you (the crate's body counts as the ship in `Character.UpdateGroundContact`). A crate item
+✅ Tested 2026-09-27: stack limits per ship type (raft 1, karve 1, longship 2, drakkar 3, other
+ships 2, ground unlimited); cargo weight trims the ship (at full capacity the crates press down with
+10% of the ship's weight: even load sits lower, one-sided load tips); standing on a crate that rides
+a ship carries you (the crate's body counts as the ship in `Character.UpdateGroundContact`).
+Weight can't sink a ship (buoyancy tops out around 7.5× the ship's weight); an optional "overload
+damages the ship" rule was offered and declined.
+Leftover cosmetic: the crate *item* borrows the wood item's model (only visible if it's ever dropped). A crate item
 spawned with `spawn` couldn't be set down (item recognized by shared-data reference; spawned items
 carry their own copy) → fixed to match by prefab name, needs re-test. Vanilla crate: Default layer
 (players collide, stacking works), has Destructible (can be smashed open).
