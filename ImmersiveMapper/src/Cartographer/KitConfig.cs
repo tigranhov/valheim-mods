@@ -26,6 +26,16 @@ namespace ImmersiveMapper.Cartographer
         Nothing,
     }
 
+    /// <summary>When the cartography table becomes the kit's drawing table.</summary>
+    internal enum TableMode
+    {
+        /// <summary>In worlds without the map, where the vanilla table has nothing to do.</summary>
+        NoMapWorlds,
+        Always,
+        /// <summary>The table stays vanilla.</summary>
+        Never,
+    }
+
     /// <summary>What the tally counts.</summary>
     internal enum TallyMode
     {
@@ -54,6 +64,10 @@ namespace ImmersiveMapper.Cartographer
 
         public static ConfigEntry<int> MaxPointsPerSheet;
         public static ConfigEntry<int> MaxMarksPerSheet;
+
+        public static ConfigEntry<TableMode> Table;
+        public static ConfigEntry<int> MaxMasterPoints;
+        public static ConfigEntry<int> MaxMasterMarks;
 
         public static ConfigEntry<float> ReadingSize;
         public static ConfigEntry<float> ReadingLift;
@@ -99,6 +113,16 @@ namespace ImmersiveMapper.Cartographer
                 Synced("Most line points one sheet holds; keeps sheets small to save and send.", new AcceptableValueRange<int>(500, 20000)));
             MaxMarksPerSheet = cfg.Bind(sheets, "MaxMarks", 200,
                 Synced("Most stamps plus notes one sheet holds.", new AcceptableValueRange<int>(10, 1000)));
+
+            const string table = "6 - Cartography table";
+            Table = cfg.Bind(table, "TakeOver", TableMode.NoMapWorlds,
+                Synced("When the cartography table becomes the drawing table for master maps. NoMapWorlds: in worlds without the map, "
+                    + "where the vanilla table has nothing to do. Always. Never: the table stays vanilla. Master maps are kept either way."));
+            MaxMasterPoints = cfg.Bind(table, "MaxLinePoints", 150000,
+                Synced("Most line points one table's master map holds (about 2.5 bytes each, sent to players near the table).",
+                    new AcceptableValueRange<int>(10000, 1000000)));
+            MaxMasterMarks = cfg.Bind(table, "MaxMarks", 3000,
+                Synced("Most stamps plus labels one master map holds.", new AcceptableValueRange<int>(100, 20000)));
 
             const string screen = "4 - Screen";
             ReadingSize = cfg.Bind(screen, "ReadingSize", 0.42f,

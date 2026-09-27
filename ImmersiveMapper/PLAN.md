@@ -327,7 +327,9 @@ sharing, companion app.
   gets the master again at a table.
 - Strokes stored as **vector strokes**, compressed in the item's custom data; stroke/point caps.
 
-**Status (2026-09-27):** step 1 built (`src/Cartographer`), not yet tested in game.
+**Status (2026-09-27):** steps 1 and 2 built (`src/Cartographer`), neither tested in game yet.
+The drawing format (v2) and fill triangulation were unit-tested outside the game (a scratch test,
+not committed): round trip, step-1 sheets still readable, self-crossing outlines still fill.
 Keys: M take out / put away (no-map worlds), right-click draw, F next sheet, J end leg; in the
 drawing view Esc or right-click closes, Ctrl+Z undoes. The case is a copy of the hammer with a
 leather tube model made in code; the parchment and pen textures are made in code too (no assets).
@@ -344,6 +346,23 @@ Stamps borrow the game's map pin icons, trader icons and a few item/piece icons.
 6. F flips sheets while reading. Put the case in a chest and back, log out and in: all still there.
 7. Config: `FieldDrawing = Everything` → ink + colours; `Tally Mode = Footsteps`; `ReadingPace`.
 8. Hold pose: `9 - Hold tuning` sliders (take it out again to apply). Log: "Hammer children".
+
+**Step 2 test checklist (cartography table):**
+1. `spawn` or build a cartography table in the no-map world; hover: "Work at the master map".
+   E on either side opens the table view (HUD hidden; Esc, right-click or Done leaves).
+2. Draw with every tool: charcoal, quill + colours, wash (under the lines), fill (draw an outline),
+   stamps, text, eraser, sizes Fine/Medium/Broad, Straight and Dotted; Ctrl+Z. Wheel zooms around
+   the cursor, middle mouse or Space + drag pans; draw past the first sheet's area (it grows).
+3. Grid on/off; Scale button (paces per square); Fit.
+4. With a map case holding a sketch: bottom bar Sheet N → the draft lies over the master
+   see-through. Drag / Shift+drag / Ctrl+wheel. Two-point fit. Then **Copy as is** on one draft and
+   **Trace** on another (compare); Clear guides. The copied draft is blank afterwards; Ctrl+Z
+   brings back both.
+5. End two legs in the field (J), then at the table: Leg buttons → press where it began, drag the
+   direction, let go → a dotted string of true length; the next leg chains from its end.
+6. Leave the table: the case's Master tab (and F while reading) shows the master copy.
+   A second table (empty): "Lay your copy here".
+7. Two players: the second one gets "Someone is working at the table".
 
 ### 3b — Cartography table (taken over)
 - The vanilla table is useless in no-map worlds, so we take over its two action spots (read and

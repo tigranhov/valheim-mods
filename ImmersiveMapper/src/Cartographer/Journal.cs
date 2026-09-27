@@ -10,6 +10,8 @@ namespace ImmersiveMapper.Cartographer
         public int Paces;
         public string Label;
         public int Day;
+        /// <summary>Laid on a master map as a measuring string.</summary>
+        public bool Plotted;
     }
 
     /// <summary>The legs noted in a map case, oldest first. At the table they become measuring strings.</summary>
@@ -17,7 +19,7 @@ namespace ImmersiveMapper.Cartographer
     {
         public const int MaxLegs = 200;
 
-        private const int Version = 1;
+        private const int Version = 2;
 
         public readonly List<Leg> Legs = new List<Leg>();
 
@@ -46,6 +48,7 @@ namespace ImmersiveMapper.Cartographer
                 pkg.Write(leg.Paces);
                 pkg.Write(leg.Label ?? "");
                 pkg.Write(leg.Day);
+                pkg.Write(leg.Plotted);
             }
             return Convert.ToBase64String(Utils.Compress(pkg.GetArray()));
         }
@@ -60,14 +63,17 @@ namespace ImmersiveMapper.Cartographer
             try
             {
                 var pkg = new ZPackage(Utils.Decompress(Convert.FromBase64String(text)));
-                if (pkg.ReadInt() > Version)
+                int version = pkg.ReadInt();
+                if (version > Version)
                 {
                     return new Journal { Unreadable = true };
                 }
                 int count = pkg.ReadInt();
                 for (int i = 0; i < count; i++)
                 {
-                    journal.Legs.Add(new Leg { Number = pkg.ReadInt(), Paces = pkg.ReadInt(), Label = pkg.ReadString(), Day = pkg.ReadInt() });
+                    var leg = new Leg { Number = pkg.ReadInt(), Paces = pkg.ReadInt(), Label = pkg.ReadString(), Day = pkg.ReadInt() };
+                    leg.Plotted = version >= 2 && pkg.ReadBool();
+                    journal.Legs.Add(leg);
                 }
             }
             catch (Exception e)

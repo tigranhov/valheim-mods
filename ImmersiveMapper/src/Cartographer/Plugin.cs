@@ -31,11 +31,13 @@ namespace ImmersiveMapper.Cartographer
         private void Update()
         {
             CaseInHand.Update();
+            TableScreen.Update();
         }
 
         private void LateUpdate()
         {
             CaseInHand.LateUpdate();
+            TableScreen.LateUpdate();
         }
 
         private void OnDestroy()

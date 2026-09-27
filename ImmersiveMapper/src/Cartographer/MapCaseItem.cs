@@ -21,6 +21,7 @@ namespace ImmersiveMapper.Cartographer
         private const string JournalKey = "IM_Map_Journal";
         private const string TallyKey = "IM_Map_Tally";
         private const string PageKey = "IM_Map_Page";
+        private const string MasterKey = "IM_Map_Master";
 
         public static bool IsCase(ItemDrop.ItemData item)
         {
@@ -69,6 +70,27 @@ namespace ImmersiveMapper.Cartographer
             {
                 item.m_customData[DraftKey + index] = sheet.Encode();
             }
+        }
+
+        public static void WipeDraft(ItemDrop.ItemData item, int index)
+        {
+            item.m_customData.Remove(DraftKey + index);
+        }
+
+        /// <summary>The copy of a table's master the case carries, or null when it has none yet.</summary>
+        public static Sheet LoadMaster(ItemDrop.ItemData item)
+        {
+            return item.m_customData.TryGetValue(MasterKey, out string text) && !string.IsNullOrEmpty(text) ? Sheet.Decode(text) : null;
+        }
+
+        public static byte[] LoadMasterBytes(ItemDrop.ItemData item)
+        {
+            return item.m_customData.TryGetValue(MasterKey, out string text) && !string.IsNullOrEmpty(text) ? System.Convert.FromBase64String(text) : null;
+        }
+
+        public static void SaveMasterBytes(ItemDrop.ItemData item, byte[] bytes)
+        {
+            item.m_customData[MasterKey] = System.Convert.ToBase64String(bytes);
         }
 
         public static Journal LoadJournal(ItemDrop.ItemData item)

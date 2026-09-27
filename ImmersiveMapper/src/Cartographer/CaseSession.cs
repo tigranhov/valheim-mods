@@ -1,12 +1,25 @@
+using UnityEngine;
+
 namespace ImmersiveMapper.Cartographer
 {
-    /// <summary>A map case taken out: its sheets and journal read once, and written back to the item after every change.</summary>
+    /// <summary>
+    /// A map case in use: its drafts, its copy of a table's master and its journal, read once and written back to the
+    /// item after every change. Page -1 is the master copy (when the case has one), 0 and up are the drafts.
+    /// </summary>
     internal sealed class CaseSession
     {
+        public const int MasterPage = -1;
+
         public readonly ItemDrop.ItemData Item;
         public readonly Sheet[] Drafts;
+        public readonly Sheet Master;
         public readonly Journal Journal;
         public int Page;
+
+        /// <summary>Where the master copy was last looked at, so reading on the move shows the same part.</summary>
+        public float MasterZoom = 1f;
+        public Vector2 MasterCenter = new Vector2(Sheet.Aspect * 0.5f, 0.5f);
+        public bool MasterViewSet;
 
         public CaseSession(ItemDrop.ItemData item)
         {
@@ -16,20 +29,30 @@ namespace ImmersiveMapper.Cartographer
             {
                 Drafts[i] = MapCaseItem.LoadDraft(item, i);
             }
+            Master = MapCaseItem.LoadMaster(item);
             Journal = MapCaseItem.LoadJournal(item);
-            Page = UnityEngine.Mathf.Clamp(MapCaseItem.LoadPage(item), 0, Drafts.Length - 1);
+            Page = Mathf.Clamp(MapCaseItem.LoadPage(item), HasMaster ? MasterPage : 0, Drafts.Length - 1);
         }
 
-        public Sheet Current => Drafts[Page];
+        public bool HasMaster => Master != null;
+
+        public bool OnMaster => Page == MasterPage;
+
+        public Sheet Current => OnMaster ? Master : Drafts[Page];
 
         public string PageTitle(int page)
         {
-            return $"Sheet {page + 1} of {Drafts.Length}";
+            return page == MasterPage ? "Master copy" : $"Sheet {page + 1} of {Drafts.Length}";
         }
 
         public void Flip()
         {
-            ShowPage((Page + 1) % Drafts.Length);
+            int next = Page + 1;
+            if (next >= Drafts.Length)
+            {
+                next = HasMaster ? MasterPage : 0;
+            }
+            ShowPage(next);
         }
 
         public void ShowPage(int page)
@@ -40,7 +63,16 @@ namespace ImmersiveMapper.Cartographer
 
         public void SaveDraft(int page)
         {
-            MapCaseItem.SaveDraft(Item, page, Drafts[page]);
+            if (page >= 0 && page < Drafts.Length)
+            {
+                MapCaseItem.SaveDraft(Item, page, Drafts[page]);
+            }
+        }
+
+        public void WipeDraft(int page)
+        {
+            Drafts[page] = new Sheet();
+            MapCaseItem.WipeDraft(Item, page);
         }
 
         public void SaveJournal()

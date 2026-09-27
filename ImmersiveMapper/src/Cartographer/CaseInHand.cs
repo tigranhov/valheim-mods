@@ -11,7 +11,7 @@ namespace ImmersiveMapper.Cartographer
     {
         private static CaseSession _session;
         private static ReadingView _reading;
-        private static DrawingView _drawing;
+        private static FieldView _drawing;
         private static bool _closeDrawing;
         private static bool _promptWasOpen;
 
@@ -31,6 +31,15 @@ namespace ImmersiveMapper.Cartographer
             if (held != _session?.Item)
             {
                 Switch(held);
+            }
+            // At the table the case isn't read on the move; the table view has it.
+            if (TableScreen.IsOpen)
+            {
+                if (_reading != null && _reading.Alive)
+                {
+                    _reading.SetVisible(false);
+                }
+                return;
             }
             if (_session == null)
             {
@@ -78,7 +87,7 @@ namespace ImmersiveMapper.Cartographer
             else if (ZInput.GetButtonDown(KitKeys.FlipSheet.Name))
             {
                 _session.Flip();
-                _reading.Show(_session.Current, _session.PageTitle(_session.Page));
+                _reading.Show(_session);
             }
             else if (ZInput.GetButtonDown(KitKeys.EndLeg.Name))
             {
@@ -97,6 +106,21 @@ namespace ImmersiveMapper.Cartographer
             _promptWasOpen = TextPrompt.Open;
         }
 
+        /// <summary>Closes the field drawing view, if it's open (the table is about to take over).</summary>
+        public static void PutDownQuill()
+        {
+            CloseDrawing();
+        }
+
+        /// <summary>Reads the held case again, after something else (the table) changed it.</summary>
+        public static void Reload()
+        {
+            if (_session != null)
+            {
+                Switch(_session.Item);
+            }
+        }
+
         private static void Switch(ItemDrop.ItemData held)
         {
             CloseDrawing();
@@ -105,7 +129,7 @@ namespace ImmersiveMapper.Cartographer
             {
                 if (_session != null)
                 {
-                    _reading.Show(_session.Current, _session.PageTitle(_session.Page));
+                    _reading.Show(_session);
                 }
                 _reading.SetVisible(false);
             }
@@ -121,11 +145,11 @@ namespace ImmersiveMapper.Cartographer
             if (_reading == null || !_reading.Alive)
             {
                 _reading = new ReadingView(canvas.transform);
-                _reading.Show(_session.Current, _session.PageTitle(_session.Page));
+                _reading.Show(_session);
             }
             if (_drawing == null || !_drawing.Alive)
             {
-                _drawing = new DrawingView(canvas.transform);
+                _drawing = new FieldView(canvas.transform);
                 _drawing.OnEndLeg = AskEndLeg;
                 _drawing.OnDone = () => _closeDrawing = true;
             }
@@ -138,6 +162,7 @@ namespace ImmersiveMapper.Cartographer
             _reading.SetVisible(false);
             _drawing.Open(_session);
             GUIManager.BlockInput(true);
+            Ui.HideHud(true);
         }
 
         private static void CloseDrawing()
@@ -148,9 +173,10 @@ namespace ImmersiveMapper.Cartographer
             }
             _drawing.Close();
             GUIManager.BlockInput(false);
+            Ui.HideHud(false);
             if (_session != null && _reading != null && _reading.Alive)
             {
-                _reading.Show(_session.Current, _session.PageTitle(_session.Page));
+                _reading.Show(_session);
             }
         }
 

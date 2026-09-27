@@ -66,6 +66,43 @@ namespace ImmersiveMapper.Cartographer
             return go.GetComponent<Button>();
         }
 
+        /// <summary>Sets a button's label size from the layout unit (a hundredth of the canvas height).</summary>
+        public static void LabelSize(RectTransform button, float u, float scale = 1f)
+        {
+            UnityEngine.UI.Text label = button.GetComponentInChildren<UnityEngine.UI.Text>();
+            if (label != null)
+            {
+                label.fontSize = Mathf.Max(10, Mathf.RoundToInt(1.9f * u * scale));
+            }
+        }
+
+        private static bool _hudHidden;
+        private static bool _hudWasHidden;
+
+        /// <summary>
+        /// Hides the game's HUD (hotbar, health, status) while a full-screen kit view is open: it draws above the kit's
+        /// canvas and would cover the tools. The game's text dialog and messages stay. Restores the player's own choice.
+        /// </summary>
+        public static void HideHud(bool hide)
+        {
+            if (Hud.instance == null)
+            {
+                _hudHidden = false;
+                return;
+            }
+            if (hide && !_hudHidden)
+            {
+                _hudWasHidden = Hud.instance.m_userHidden;
+                Hud.instance.m_userHidden = true;
+                _hudHidden = true;
+            }
+            else if (!hide && _hudHidden)
+            {
+                Hud.instance.m_userHidden = _hudWasHidden;
+                _hudHidden = false;
+            }
+        }
+
         /// <summary>The height of the canvas the kit draws on, in canvas units.</summary>
         public static float CanvasHeight(Transform canvas)
         {
