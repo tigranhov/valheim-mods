@@ -68,6 +68,9 @@ Build order: **1. Trader Beacons → 2. Cargo Lashing (+ Packing Crates) → 3. 
 - 2026-09-27 — Cartographer step 2 (table) decided: either action spot opens the table, one player at
   a time, the master grows as you draw, drafts are laid over it and aligned (two-point fit), copied as
   is or traced (both built to compare), then wiped; copying is free; colours only at the table.
+- 2026-09-27 — Cartographer progression approved: upgrades need the next biome's materials (sheet 4
+  Black Forest, sheet 5 Swamp, log line Swamp); pigments learned per table with their own biome's
+  material; sounding line dropped; log line next to the table as the only ship fitting.
 
 ### Repo layout (planned)
 ```
@@ -423,16 +426,29 @@ Stamps borrow the game's map pin icons, trader icons and a few item/piece icons.
   fifty").
 - To settle later: destroyed ship → fittings drop or are lost; units at sea.
 
-### 3d — Case upgrades
-- **Craft a part at its station, then right-click it to fit it into the case** (the part is used
-  up). Lets upgrades come from any station (vanilla quality upgrades only use the item's own
-  station). First draft, to tune:
-  | Part | Station | Adds |
-  |---|---|---|
-  | Extra pages | Workbench | More draft sheets |
-  | Sighting vane | Forge | Aim at landmark A, then B → the angle between them (find yourself on your map from 2–3 landmarks) |
-  | Dvergr lens | Black forge / Galdr table | Rangefinder: distance to an aimed point, with error (config, maybe off) |
-- Dropped: compass, altimeter. Optional later: a Cartography skill that lowers measurement error.
+### 3d — Progression: case upgrades and pigments (built 2026-09-27, not yet tested in game)
+**Rule (user's pick):** anything first useful in one biome needs the **next** biome's materials.
+Pigments are the exception: a biome's colour is taught with something **from** that biome (you can
+only paint a place once you've been there). Approved list (all names checked in the game's asset
+manifest; all recipes in the config):
+
+| Thing | Station | Recipe | Gives |
+|---|---|---|---|
+| Map case | Workbench | 2 Deer hide, 4 Leather scraps | 3 draft sheets |
+| Troll-hide sheet | Workbench | 1 Troll hide, 2 Resin (Black Forest) | 4th sheet |
+| Vellum sheet | Workbench | 2 Deer hide, 3 Guck (Swamp) | 5th sheet |
+| Log line | Forge | 1 Iron, 6 Leather scraps (Swamp) | ship fitting (3c) |
+
+- Parts: craft, then use from the inventory to fit into your case (held one, else the first carried);
+  each part once per case; the case's tooltip shows its sheet count.
+- **Pigments, learned per table** (the group's table learns for everyone; an outpost is taught
+  again), material used up: lampblack free; Red ochre 5 Raspberries, Meadows 5 Dandelions, Woad 5
+  Blueberries, Black Forest 3 Pine cones, Verdigris 2 Copper, Swamp 3 Guck, Ocean 2 Chitin, Mountain 2
+  Freeze glands, Deep North 1 Crystal, Plains 5 Cloudberries, Mistlands 3 Jotun puffs, Ashlands 2
+  Charred bones. Unlearned swatches show faded; clicking one teaches it if you carry the material.
+  `6 - Cartography table / Pigments` off = every colour from the start.
+- Later: Sighting vane (angle between two landmarks), Dvergr lens (rangefinder with error), maybe a
+  Cartography skill. Dropped: compass, altimeter, sounding line.
 
 ### 3e — Sharing (later)
 - Hand a sheet to a friend; join sheets into an atlas; hang a map on a wall for the group.

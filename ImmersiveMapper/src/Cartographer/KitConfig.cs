@@ -66,6 +66,8 @@ namespace ImmersiveMapper.Cartographer
         public static ConfigEntry<int> MaxMarksPerSheet;
 
         public static ConfigEntry<TableMode> Table;
+        public static ConfigEntry<bool> PigmentsEnabled;
+        public static ConfigEntry<string> PigmentCosts;
         public static ConfigEntry<int> MaxMasterPoints;
         public static ConfigEntry<int> MaxMasterMarks;
 
@@ -97,8 +99,8 @@ namespace ImmersiveMapper.Cartographer
             CaseStation = cfg.Bind(mapCase, "CraftingStation", "piece_workbench",
                 Synced("Where the map case is crafted (piece_workbench, forge, ...). Applies after a restart."));
             DraftSheets = cfg.Bind(mapCase, "DraftSheets", 3,
-                Synced("Draft sheets in a map case. Lowering it never deletes a drawing: hidden sheets come back if you raise it again.",
-                    new AcceptableValueRange<int>(1, 8)));
+                Synced("Draft sheets in a new map case (each sheet part fitted adds one). Lowering it never deletes a drawing: hidden "
+                    + "sheets come back if you raise it again.", new AcceptableValueRange<int>(1, 8)));
             Pace = cfg.Bind(mapCase, "ReadingPace", ReadingPace.Jog,
                 Synced("How fast you can move with the map case out. Walk: the slow walk. Jog: the normal pace, no sprinting (default, "
                     + "user's pick 2026-09-27). Any: no limit."));
@@ -133,6 +135,12 @@ namespace ImmersiveMapper.Cartographer
                     new AcceptableValueRange<int>(10000, 1000000)));
             MaxMasterMarks = cfg.Bind(table, "MaxMarks", 3000,
                 Synced("Most stamps plus labels one master map holds.", new AcceptableValueRange<int>(100, 20000)));
+            PigmentsEnabled = cfg.Bind(table, "Pigments", true,
+                Synced("A table only paints the colours it has learned: lampblack comes with it, every other colour is taught once by "
+                    + "bringing its material (used up). Off: every colour from the start."));
+            PigmentCosts = cfg.Bind(table, "PigmentCosts", Pigments.DefaultCosts,
+                Synced("What teaches each colour, as Colour=Item:Amount pairs separated by commas (colour names as on the palette). "
+                    + "A colour not listed is known from the start."));
 
             StampPalette = cfg.Bind("7 - Stamps", "Palette", Stamps.DefaultPalette,
                 "Your stamps, in order: names of items, pieces or locations with a map icon (like Vendor_BlackForest), or mark_x, "

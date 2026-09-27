@@ -24,7 +24,7 @@ namespace ImmersiveMapper.Cartographer
         public CaseSession(ItemDrop.ItemData item)
         {
             Item = item;
-            Drafts = new Sheet[KitConfig.DraftSheets.Value];
+            Drafts = new Sheet[MapCaseItem.SheetCount(item)];
             for (int i = 0; i < Drafts.Length; i++)
             {
                 Drafts[i] = MapCaseItem.LoadDraft(item, i);

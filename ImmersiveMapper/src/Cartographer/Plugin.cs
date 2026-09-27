@@ -22,6 +22,7 @@ namespace ImmersiveMapper.Cartographer
         {
             Log = Logger;
             KitConfig.Bind(Config);
+            CaseUpgrades.Bind(Config);
             KitKeys.Register(Config);
             MapCaseSetup.Register();
             LogLineSetup.Register();

@@ -96,7 +96,26 @@ namespace ImmersiveMapper.Cartographer
             {
                 return !LogLine.TryFit(player, inventory ?? player.GetInventory(), item);
             }
+            CaseUpgrades.Part part = CaseUpgrades.PartOf(item);
+            if (part != null)
+            {
+                return !CaseUpgrades.TryFit(player, inventory ?? player.GetInventory(), item, part);
+            }
             return true;
+        }
+    }
+
+    /// <summary>A map case's tooltip says how many draft sheets it holds.</summary>
+    [HarmonyPatch(typeof(ItemDrop.ItemData), nameof(ItemDrop.ItemData.GetTooltip),
+        typeof(ItemDrop.ItemData), typeof(int), typeof(bool), typeof(float), typeof(int), typeof(bool))]
+    internal static class CaseTooltipPatch
+    {
+        private static void Postfix(ItemDrop.ItemData item, ref string __result)
+        {
+            if (MapCaseItem.IsCase(item))
+            {
+                __result += $"\nDraft sheets: {MapCaseItem.SheetCount(item)}";
+            }
         }
     }
 

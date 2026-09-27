@@ -34,6 +34,7 @@ namespace ImmersiveMapper.Cartographer
         private readonly Button _straight;
         private readonly Button _dotted;
         private readonly List<Button> _swatches = new List<Button>();
+        private readonly List<Image> _swatchFills = new List<Image>();
         private readonly Text _swatchName;
         private readonly Dictionary<string, Button> _stamps = new Dictionary<string, Button>();
         private readonly Text _stampName;
@@ -42,6 +43,11 @@ namespace ImmersiveMapper.Cartographer
         private readonly Button _done;
         private List<Stamps.Kind> _builtPalette;
         private Func<ToolKind, bool> _allowed = _ => true;
+
+        /// <summary>Whether a colour can be painted with here (a table knows only its learned pigments).</summary>
+        public Func<byte, bool> Known = _ => true;
+        /// <summary>Clicking a colour not known yet: tries to teach it; true when it's known now.</summary>
+        public Func<byte, bool> Teach;
         private bool _colours = true;
 
         public ToolPanel(Transform parent, DrawTools tools, Action onDone)
@@ -86,8 +92,14 @@ namespace ImmersiveMapper.Cartographer
                 fill.rectTransform.offsetMax = new Vector2(-5f, -5f);
                 fill.color = Inks.All[i].Color;
                 fill.raycastTarget = false;
+                _swatchFills.Add(fill);
                 swatch.onClick.AddListener(() =>
                 {
+                    if (!Known(color) && (Teach == null || !Teach(color)))
+                    {
+                        Refresh();
+                        return;
+                    }
                     if (_tools.RecolourSelection(color))
                     {
                         Refresh();
@@ -279,6 +291,10 @@ namespace ImmersiveMapper.Cartographer
             for (int i = 0; i < _swatches.Count; i++)
             {
                 Tint(_swatches[i], coloured && i == _tools.Color);
+                // A colour still to be learned shows faded.
+                Color fill = Inks.All[i].Color;
+                fill.a = Known((byte)i) ? 1f : 0.25f;
+                _swatchFills[i].color = fill;
             }
             _swatchName.text = coloured ? Inks.All[_tools.Color].Name : "";
             foreach (KeyValuePair<string, Button> pair in _stamps)

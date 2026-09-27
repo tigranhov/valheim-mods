@@ -52,6 +52,7 @@ namespace ImmersiveMapper.Cartographer
         private float _sinceBeat;
         private bool _gridOn = true;
         private float _u = 10f;
+        private int _learned;
         private float _left;
         private float _barY;
 
@@ -127,6 +128,20 @@ namespace ImmersiveMapper.Cartographer
             _tools.MaxMarks = KitConfig.MaxMasterMarks.Value;
             _tools.Changed = () => { _dirty = true; RefreshBars(); };
             bool writable = !_master.Unreadable;
+            _learned = Pigments.Learned(table);
+            _panel.Known = color => Pigments.Known(_learned, color);
+            _panel.Teach = color =>
+            {
+                if (Player.m_localPlayer != null)
+                {
+                    _learned = Pigments.Teach(_table, Player.m_localPlayer, color, _learned);
+                }
+                return Pigments.Known(_learned, color);
+            };
+            if (!Pigments.Known(_learned, _tools.Color))
+            {
+                _tools.Color = Inks.Black;
+            }
             _panel.Apply(_ => writable, true);
 
             _root.gameObject.SetActive(true);

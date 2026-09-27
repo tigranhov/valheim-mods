@@ -22,6 +22,8 @@ namespace ImmersiveMapper.Cartographer
         private const string TallyKey = "IM_Map_Tally";
         private const string PageKey = "IM_Map_Page";
         private const string MasterKey = "IM_Map_Master";
+        private const string UpgradesKey = "IM_Map_Upgrades";
+        private const string SheetUpgradePrefix = "sheet_";
 
         public static bool IsCase(ItemDrop.ItemData item)
         {
@@ -70,6 +72,40 @@ namespace ImmersiveMapper.Cartographer
             {
                 item.m_customData[DraftKey + index] = sheet.Encode();
             }
+        }
+
+        /// <summary>Draft sheets in this case: the base count plus one per sheet part fitted.</summary>
+        public static int SheetCount(ItemDrop.ItemData item)
+        {
+            int count = KitConfig.DraftSheets.Value;
+            foreach (string upgrade in Upgrades(item))
+            {
+                if (upgrade.StartsWith(SheetUpgradePrefix))
+                {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        public static bool HasUpgrade(ItemDrop.ItemData item, string key)
+        {
+            return System.Array.IndexOf(Upgrades(item), key) >= 0;
+        }
+
+        public static void AddUpgrade(ItemDrop.ItemData item, string key)
+        {
+            if (!HasUpgrade(item, key))
+            {
+                item.m_customData.TryGetValue(UpgradesKey, out string list);
+                item.m_customData[UpgradesKey] = string.IsNullOrEmpty(list) ? key : list + "," + key;
+            }
+        }
+
+        private static string[] Upgrades(ItemDrop.ItemData item)
+        {
+            return item.m_customData.TryGetValue(UpgradesKey, out string list) && !string.IsNullOrEmpty(list)
+                ? list.Split(',') : System.Array.Empty<string>();
         }
 
         public static void WipeDraft(ItemDrop.ItemData item, int index)
