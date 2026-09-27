@@ -193,7 +193,10 @@ physically fits. A packed crate can't go into carts, ship holds or chests.
   look to reuse for our crate.
 
 ### v0.1 — Cargo crates
-**Status (2026-09-27):** written and compiling (`src/ShipCargo`), not yet tested in game.
+**Status (2026-09-27):** in game: pick up → set down on a deck → rides the ship ✅. A crate item
+spawned with `spawn` couldn't be set down (item recognized by shared-data reference; spawned items
+carry their own copy) → fixed to match by prefab name, needs re-test. Vanilla crate: Default layer
+(players collide, stacking works), has Destructible (can be smashed open).
 Design notes from the code research:
 - The crate's contents travel in the item's custom data as the exact bytes the placed crate saved
   (`ZDOVars.s_items`); weight/count summaries alongside.
