@@ -62,6 +62,8 @@ Build order: **1. Trader Beacons → 2. Cargo Lashing (+ Packing Crates) → 3. 
   broken ship leaves behind) + cart lashing, each switchable. See Milestone 2 for details.
 - 2026-09-27 — Ship Cargo performance pass before moving on: ship keys make crate network updates
   ~15–20× rarer; Shift-crafting crates is limited to the room at the station (see Milestone 2).
+- 2026-09-27 — Cart lashing becomes its own mod (`CartLashing`), a lighter alternative to crates;
+  the ship-riding code is shared (`src/Shared/ShipRiding`). See Milestone 2.
 
 ### Repo layout (planned)
 ```
@@ -70,7 +72,9 @@ immersive-mapper/
   Directory.Build.props      # game path, profile path, shared build settings
   ImmersiveMapper.sln
   src/TraderBeacons/
-  src/ShipCargo/             # cargo crates + cart lashing
+  src/ShipCargo/             # cargo crates
+  src/CartLashing/           # lashing vanilla carts to ships
+  src/Shared/ShipRiding/     # riding ships, compiled into ShipCargo and CartLashing
   src/Cartographer/
   companion/                 # optional web app (milestone 3e)
 ```
@@ -307,11 +311,21 @@ Single player was already light (per-crate work is a few pose updates per frame)
   only helped with one player → a player→crate dictionary.
 - Crate weight followed a 0.5 s timer on every crate → now updated only when its contents change.
 
-### v0.2 — Cart lashing
-- On a cart standing on a ship deck, Shift+E → **"Lash to ship"** / **"Untie"**. A lashed cart
-  rides the ship like a crate (body + wheels frozen, relative sync).
-- Works with anything using the vanilla cart script (`Vagon`), incl. CraftyCarts' carts.
-- Survives relog/zone reload. Ship destroyed → the cart is released with its contents.
+### Cart lashing — its own mod, `src/CartLashing` (✅ tested and merged into main 2026-09-27; was branch `feature/cart-lashing`)
+**Decision (2026-09-27):** a separate mod, not part of Ship Cargo: crates (a new building, carrying)
+change the classic game a lot; lashing only makes vanilla carts behave on ships. Install either or both.
+- On a cart standing on a ship's deck, Shift+E → **"Lash to the ship"** / **"Untie"** (on the cart or
+  its storage). A lashed cart rides the ship like a crate: the cart and its wheels frozen (kinematic),
+  the game's `ZSyncTransform` paused, can't be pulled ("Untie the cart first"), storage still opens.
+  Part of the ship: hits on it go to the ship. Standing on it (or a wheel) carries you like the deck.
+- Works with anything using the vanilla cart script (`Vagon`, components added in `Vagon.Awake`),
+  incl. CraftyCarts' carts. Free, no per-ship limit. Config: `Enabled` (admin-synced).
+- Survives relog/zone reload (ship key). Ship destroyed → untied, an ordinary cart again.
+- The owner does the lashing (RPC), checking again that it stands on a deck and isn't hitched.
+- **Shared code:** riding ships moved out of Ship Cargo into `src/Shared/ShipRiding` (`ShipPassenger`,
+  `ShipKey`, ship patches, "hits go to the ship", "standing on it = on the ship"), compiled into both
+  mods, so each still installs on its own. With both installed, each patches for its own passengers,
+  and they share the ship key (the key's RPC is registered once, by whichever loads first).
 
 ### Existing mods to recommend alongside (not rebuild)
 LongshipUpgrades (bigger longship storage), BoatAdditions (knarr cargo ship), balrond shipyard

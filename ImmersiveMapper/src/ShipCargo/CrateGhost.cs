@@ -1,6 +1,7 @@
 using System.Collections.Generic;
-using UnityEngine;
+using ImmersiveMapper.Shared;
 using UnityEngine.Rendering;
+using UnityEngine;
 
 namespace ImmersiveMapper.ShipCargo
 {

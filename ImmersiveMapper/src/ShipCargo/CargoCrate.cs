@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ImmersiveMapper.Shared;
 using UnityEngine;
 
 namespace ImmersiveMapper.ShipCargo

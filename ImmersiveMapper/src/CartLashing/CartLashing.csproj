@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>CartLashing</AssemblyName>
+    <RootNamespace>ImmersiveMapper.CartLashing</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Riding ships, shared with ShipCargo: compiled into each mod, so each still installs on its own. -->
+    <Compile Include="..\Shared\ShipRiding\*.cs" Link="Shared\ShipRiding\%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

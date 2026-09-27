@@ -1,11 +1,12 @@
 using System;
 
-namespace ImmersiveMapper.ShipCargo
+namespace ImmersiveMapper.Shared
 {
     /// <summary>
     /// A ship's own id for its cargo, kept in the ship's ZDO. ZDO ids change when a world loads, but a ZDO's data is
     /// saved with it, so this key stays the same: a crate that remembers it finds its ship again exactly after a reload.
-    /// Only the ship's owner may write it, so anyone else asks the owner to.
+    /// Only the ship's owner may write it, so anyone else asks the owner to. Shared by the mods whose things ride
+    /// ships: they all use the same key, and whichever loads first answers the requests.
     /// </summary>
     internal static class ShipKey
     {
@@ -16,7 +17,7 @@ namespace ImmersiveMapper.ShipCargo
         public static void Register(Ship ship)
         {
             ZNetView view = ship.m_nview;
-            if (view == null || view.GetZDO() == null)
+            if (view == null || view.GetZDO() == null || view.m_functions.ContainsKey(ClaimRpc.GetStableHashCode()))
             {
                 return;
             }

@@ -1,3 +1,4 @@
+using ImmersiveMapper.Shared;
 using UnityEngine;
 
 namespace ImmersiveMapper.ShipCargo
@@ -39,7 +40,7 @@ namespace ImmersiveMapper.ShipCargo
         /// <summary>Rests the crate's bottom on the hit point: aligned with the deck on a ship, turned yawDegrees on land.</summary>
         public static void RestOn(RaycastHit hit, float yawDegrees, out Vector3 position, out Quaternion rotation, out Ship ship)
         {
-            ship = CratePlacement.ShipOf(hit.collider);
+            ship = ShipPassenger.ShipOf(hit.collider);
             Quaternion baseRotation = ship != null ? ship.transform.rotation : Quaternion.identity;
             rotation = baseRotation * Quaternion.Euler(0f, yawDegrees, 0f);
             position = hit.point - rotation * CrateShape.BottomCenter;
@@ -77,7 +78,7 @@ namespace ImmersiveMapper.ShipCargo
             }
             if (ship == null)
             {
-                ship = CratePlacement.ShipOf(support.collider);
+                ship = ShipPassenger.ShipOf(support.collider);
             }
             float water = ZoneSystem.instance != null ? ZoneSystem.instance.m_waterLevel : 30f;
             if (ship == null && support.point.y < water - WaterMargin)
@@ -101,7 +102,7 @@ namespace ImmersiveMapper.ShipCargo
             Vector3 bottom = position + rotation * CrateShape.BottomCenter;
             // Starts inside the crate itself, which the ray ignores.
             return Physics.Raycast(bottom + up * 0.1f, -up, out RaycastHit support, 0.1f + SupportProbe, Mask, QueryTriggerInteraction.Ignore)
-                ? CratePlacement.ShipOf(support.collider)
+                ? ShipPassenger.ShipOf(support.collider)
                 : null;
         }
 

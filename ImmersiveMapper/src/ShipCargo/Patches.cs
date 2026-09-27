@@ -1,4 +1,5 @@
 using HarmonyLib;
+using ImmersiveMapper.Shared;
 using UnityEngine;
 
 namespace ImmersiveMapper.ShipCargo
@@ -200,46 +201,6 @@ namespace ImmersiveMapper.ShipCargo
         }
     }
 
-    // A ship is really being destroyed (not just unloaded) when its owner calls ZNetScene.Destroy on it.
-    [HarmonyPatch(typeof(ZNetScene), nameof(ZNetScene.Destroy))]
-    internal static class ShipDestroyPatch
-    {
-        private static void Prefix(GameObject go)
-        {
-            Ship ship = go != null ? go.GetComponent<Ship>() : null;
-            if (ship == null)
-            {
-                return;
-            }
-            ZNetView nview = go.GetComponent<ZNetView>();
-            if (nview != null && nview.GetZDO() != null && nview.IsOwner())
-            {
-                ShipPassenger.NotifyShipDestroyed(ship);
-            }
-        }
-    }
-
-    // Standing on a crate that rides a ship counts as standing on the ship, so the game carries you along
-    // (Character.ApplyGroundForce) and syncs your position relative to the ship, as on the deck.
-    [HarmonyPatch(typeof(Character), "UpdateGroundContact")]
-    internal static class StandOnCratePatch
-    {
-        private static void Postfix(Character __instance)
-        {
-            Rigidbody ground = __instance.m_lastGroundBody;
-            if (ground == null)
-            {
-                return;
-            }
-            ShipPassenger passenger = ground.GetComponent<ShipPassenger>();
-            Rigidbody ship = passenger != null ? passenger.ShipBody : null;
-            if (ship != null)
-            {
-                __instance.m_lastGroundBody = ship;
-            }
-        }
-    }
-
     [HarmonyPatch(typeof(Ship), nameof(Ship.CustomFixedUpdate))]
     internal static class ShipCargoWeightPatch
     {
@@ -325,65 +286,6 @@ namespace ImmersiveMapper.ShipCargo
             animator.SetIKPosition(hand, position);
             animator.SetIKRotationWeight(hand, rotationWeight);
             animator.SetIKRotation(hand, rotation);
-        }
-    }
-
-    // A crate riding a ship is part of the ship: a hit on it hits the ship instead. Checked where the hit starts (the
-    // attacker's side) and again where it lands (the crate's owner), in case the two disagree about the riding.
-    [HarmonyPatch(typeof(WearNTear), nameof(WearNTear.Damage))]
-    internal static class CrateDamagePatch
-    {
-        private static bool Prefix(WearNTear __instance, HitData hit)
-        {
-            CargoCrate crate = __instance.GetComponent<CargoCrate>();
-            if (crate == null || !crate.IsRiding)
-            {
-                return true;
-            }
-            Ship ship = crate.Ship;
-            if (ship != null && ship.m_destructible != null)
-            {
-                ship.m_destructible.Damage(hit);
-            }
-            return false;
-        }
-    }
-
-    [HarmonyPatch(typeof(WearNTear), "RPC_Damage")]
-    internal static class CrateDamageReceivedPatch
-    {
-        private static bool Prefix(WearNTear __instance)
-        {
-            CargoCrate crate = __instance.GetComponent<CargoCrate>();
-            return crate == null || !crate.IsRiding;
-        }
-    }
-
-    [HarmonyPatch(typeof(Ship), "Awake")]
-    internal static class ShipAwakePatch
-    {
-        private static void Postfix(Ship __instance)
-        {
-            ShipKey.Register(__instance);
-        }
-    }
-
-    // Loaded ships, for passengers to find their ship again after a reload.
-    [HarmonyPatch(typeof(Ship), "OnEnable")]
-    internal static class ShipEnablePatch
-    {
-        private static void Postfix(Ship __instance)
-        {
-            ShipPassenger.ShipLoaded(__instance);
-        }
-    }
-
-    [HarmonyPatch(typeof(Ship), "OnDisable")]
-    internal static class ShipDisablePatch
-    {
-        private static void Postfix(Ship __instance)
-        {
-            ShipPassenger.ShipUnloaded(__instance);
         }
     }
 }

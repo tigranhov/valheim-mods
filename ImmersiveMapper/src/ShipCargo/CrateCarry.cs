@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ImmersiveMapper.Shared;
 using UnityEngine;
 
 namespace ImmersiveMapper.ShipCargo
@@ -313,7 +314,7 @@ namespace ImmersiveMapper.ShipCargo
             if (Physics.Raycast(center, Vector3.down, out RaycastHit hit, SettleProbe, CrateFit.Mask, QueryTriggerInteraction.Ignore))
             {
                 float water = ZoneSystem.instance != null ? ZoneSystem.instance.m_waterLevel : 30f;
-                Ship ship = CratePlacement.ShipOf(hit.collider);
+                Ship ship = ShipPassenger.ShipOf(hit.collider);
                 if (ship != null || hit.point.y >= water)
                 {
                     float yaw = ship != null ? 0f : transform.rotation.eulerAngles.y;

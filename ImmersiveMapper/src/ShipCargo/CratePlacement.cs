@@ -1,3 +1,4 @@
+using ImmersiveMapper.Shared;
 using UnityEngine;
 
 namespace ImmersiveMapper.ShipCargo
@@ -37,7 +38,7 @@ namespace ImmersiveMapper.ShipCargo
                     continue;
                 }
                 // Square to the deck on a ship; on land, facing away from the player.
-                float yaw = ShipOf(hit.collider) != null ? 0f : Quaternion.LookRotation(direction).eulerAngles.y;
+                float yaw = ShipPassenger.ShipOf(hit.collider) != null ? 0f : Quaternion.LookRotation(direction).eulerAngles.y;
                 CrateFit.RestOn(hit, yaw, out position, out rotation, out ship);
                 if (CrateFit.Fits(position, rotation, ref ship, out _))
                 {
@@ -93,22 +94,6 @@ namespace ImmersiveMapper.ShipCargo
                 crate.GetComponentInChildren<Container>().Load();
             }
             return crate;
-        }
-
-        /// <summary>The ship a collider belongs to, directly or through a crate riding it.</summary>
-        public static Ship ShipOf(Collider collider)
-        {
-            if (collider == null)
-            {
-                return null;
-            }
-            Ship ship = collider.GetComponentInParent<Ship>();
-            if (ship != null)
-            {
-                return ship;
-            }
-            ShipPassenger passenger = collider.GetComponentInParent<ShipPassenger>();
-            return passenger != null ? passenger.CurrentShip : null;
         }
     }
 }

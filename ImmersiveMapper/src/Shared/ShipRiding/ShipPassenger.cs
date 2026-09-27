@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ImmersiveMapper.ShipCargo
+namespace ImmersiveMapper.Shared
 {
     /// <summary>
     /// Keeps an object riding on a ship. Every client places it at the same fixed offset from its own copy of the
@@ -50,6 +50,9 @@ namespace ImmersiveMapper.ShipCargo
         /// <summary>Raised on the passenger's owner when its ship sank or was destroyed. It no longer rides.</summary>
         public event Action ShipLost;
 
+        /// <summary>Raised on every client when the passenger starts or stops riding (true = riding).</summary>
+        public event Action<bool> RidingChanged;
+
         private ZNetView _nview;
         private Collider[] _colliders;
         private bool _onShip;
@@ -81,6 +84,22 @@ namespace ImmersiveMapper.ShipCargo
         public float Weight { get; set; }
 
         public static IReadOnlyList<ShipPassenger> All => Instances;
+
+        /// <summary>The ship a collider belongs to, directly or through a passenger riding it.</summary>
+        public static Ship ShipOf(Collider collider)
+        {
+            if (collider == null)
+            {
+                return null;
+            }
+            Ship ship = collider.GetComponentInParent<Ship>();
+            if (ship != null)
+            {
+                return ship;
+            }
+            ShipPassenger passenger = collider.GetComponentInParent<ShipPassenger>();
+            return passenger != null ? passenger.CurrentShip : null;
+        }
 
         public static void ShipLoaded(Ship ship)
         {
@@ -180,6 +199,7 @@ namespace ImmersiveMapper.ShipCargo
                 _onShip = onShip;
                 _missingFor = 0f;
                 SetShip(null);
+                RidingChanged?.Invoke(onShip);
             }
         }
 
@@ -324,7 +344,7 @@ namespace ImmersiveMapper.ShipCargo
         // spills when a ship is seen being destroyed, never on a guess.
         private void GiveUpOnShip()
         {
-            Plugin.Log.LogInfo($"{name}: no matching ship within {LostAfterSeconds:0} s; it no longer rides a ship.");
+            Debug.Log($"{name}: no matching ship within {LostAfterSeconds:0} s; it no longer rides a ship.");
             Detach();
         }
 
