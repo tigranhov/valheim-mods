@@ -46,6 +46,7 @@ namespace BetterWheel
         public static ConfigEntry<MainWheel> Main;
         public static ConfigEntry<KeepOpen> AfterUse;
         public static ConfigEntry<ReleaseToUse> MainRelease;
+        public static ConfigEntry<float> ReleaseHold;
         public static readonly ConfigEntry<ReleaseToUse>[] Release = new ConfigEntry<ReleaseToUse>[WheelSlots];
         public static readonly ConfigEntry<string>[] Names = new ConfigEntry<string>[WheelSlots];
         public static readonly ConfigEntry<KeyboardShortcut>[] Keys = new ConfigEntry<KeyboardShortcut>[WheelSlots];
@@ -63,6 +64,9 @@ namespace BetterWheel
                 + "of a held key with ReleaseToUse on always closes it.");
             MainRelease = cfg.Bind("1 - General", "ReleaseToUse", ReleaseToUse.On,
                 ReleaseText("the wheel key (G) and the emote key (T)"));
+            ReleaseHold = cfg.Bind("1 - General", "ReleaseHoldTime", 0.2f,
+                new ConfigDescription("Seconds a wheel key must be held before letting go counts as a release (uses what you point at, "
+                    + "or closes). A shorter press is a tap: the wheel stays open for clicking.", new AcceptableValueRange<float>(0.05f, 1f)));
 
             // Extra wheels start without a key: bind the ones you want.
             string[] names = { "Food & gear", "Food", "Gear", "" };

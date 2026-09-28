@@ -18,9 +18,14 @@ namespace BetterWheel
     {
         private static readonly Func<Player, bool> TakeInput =
             AccessTools.MethodDelegate<Func<Player, bool>>(AccessTools.Method(typeof(Player), "TakeInput"));
+        // The wheel's own "use what's selected", as a click does.
+        private static readonly Action<RadialBase> Use =
+            AccessTools.MethodDelegate<Action<RadialBase>>(AccessTools.Method(typeof(RadialBase), "OnInteract"));
 
         private static int _requested = -1;
         private static bool _releaseOverridden;
+        private static bool _releaseUses;
+        private static string _openButton;
         private static int _open = -1;
         private static int _openedFrame;
         private static float _pressedAt;
@@ -68,13 +73,17 @@ namespace BetterWheel
         }
 
         /// <summary>
-        /// Sets the game's release-to-use flag for the wheel being opened (the game reads it when a key is let go):
-        /// a wheel key's own setting, or the general one for the wheel and emote keys. Put back when the wheel closes.
+        /// Release to use is handled here, not by the game: the game only counts a release after a fixed hold of its own,
+        /// so a quick press, point and let go did nothing. Here the hold is the ReleaseHoldTime setting. The game's own
+        /// flag stays off while a wheel is open (so it can't fire as well) and is put back when the wheel closes.
         /// </summary>
         public static void ApplyRelease(bool fromWheelKey)
         {
             ReleaseToUse setting = fromWheelKey && _open >= 0 ? WheelConfig.Release[_open].Value : WheelConfig.MainRelease.Value;
-            RadialData.SO.EnableReleaseToUseMode = setting == ReleaseToUse.Game ? GameRelease() : setting == ReleaseToUse.On;
+            _releaseUses = setting == ReleaseToUse.Game ? GameRelease() : setting == ReleaseToUse.On;
+            // G, or T for emotes, opened this one (a gamepad's wheel button counts too).
+            _openButton = fromWheelKey ? null : ZInput.GetButton("OpenEmote") ? "OpenEmote" : "OpenRadial";
+            RadialData.SO.EnableReleaseToUseMode = false;
             _releaseOverridden = true;
         }
 
@@ -102,18 +111,29 @@ namespace BetterWheel
         }
 
         /// <summary>
-        /// For the wheel's close check: its key again closes it; another wheel's key switches to that wheel. Without
-        /// release to use, holding the key and letting go closes it too, as the game does for the wheel key.
+        /// For the wheel's close check, first thing each frame: the key that opened the wheel let go after a hold uses what's
+        /// selected (release to use) or just closes. A quicker tap leaves the wheel open for clicking.
         /// </summary>
+        public static bool Released(RadialBase radial)
+        {
+            if (!TryGetRelease(out float held) || held < WheelConfig.ReleaseHold.Value)
+            {
+                return false;
+            }
+            WheelLog.Write($"Let go after {held:0.00}s: {(_releaseUses ? "use" : "close")}, {WheelLog.State(radial)}");
+            if (_releaseUses)
+            {
+                Use(radial);
+            }
+            return true;
+        }
+
+        /// <summary>For the wheel's close check: its key again closes it; another wheel's key switches to that wheel.</summary>
         public static bool CloseRequested(RadialBase radial)
         {
             if (_open < 0 || Time.frameCount <= _openedFrame)
             {
                 return false;
-            }
-            if (!RadialData.SO.EnableReleaseToUseMode && Time.time - _pressedAt > RadialData.SO.HoldCloseDelay && KeyUp(WheelConfig.Keys[_open].Value))
-            {
-                return true;
             }
             int pressed = PressedWheel();
             if (pressed < 0)
@@ -136,14 +156,30 @@ namespace BetterWheel
             return false;
         }
 
-        /// <summary>The game's Release to use setting, for wheel keys: hold the key, point, let go to use.</summary>
-        public static bool ReleasedToUse()
+        // The opening key let go this frame, and how long it was held.
+        private static bool TryGetRelease(out float held)
         {
-            if (_open < 0 || !RadialData.SO.EnableReleaseToUseMode)
+            held = 0f;
+            if (_openButton != null)
             {
+                if (ZInput.GetButtonUp(_openButton))
+                {
+                    held = ZInput.GetButtonLastPressedTimer(_openButton);
+                    return true;
+                }
+                if (ZInput.GetButtonUp("JoyRadial"))
+                {
+                    held = ZInput.GetButtonLastPressedTimer("JoyRadial");
+                    return true;
+                }
                 return false;
             }
-            return Time.time - _pressedAt > RadialData.SO.HoldCloseDelay && KeyUp(WheelConfig.Keys[_open].Value);
+            if (_open >= 0 && Time.frameCount > _openedFrame && KeyUp(WheelConfig.Keys[_open].Value))
+            {
+                held = Time.time - _pressedAt;
+                return true;
+            }
+            return false;
         }
 
         private static ItemGroupConfig Create(int slot)

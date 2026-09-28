@@ -15,6 +15,7 @@ namespace BetterWheel
         private void Awake()
         {
             WheelConfig.Bind(Config);
+            WheelLog.Bind(Config, Logger);
             _harmony.PatchAll(typeof(Plugin).Assembly);
         }
 

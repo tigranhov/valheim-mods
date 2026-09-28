@@ -27,32 +27,40 @@ namespace BetterWheel
             // As the game's own opening does.
             radial.OnInteractionDelay = delay => PlayerController.SetTakeInputDelay(delay);
             radial.ShouldAnimateIn = true;
+            string opened;
             if (fromWheelKey)
             {
+                opened = $"wheel \"{requested.GroupName}\"";
                 radial.Open(requested);
             }
             else if (ZInput.GetButton("OpenEmote"))
             {
+                opened = "emotes";
                 radial.Open(RadialData.SO.EmoteGroupConfig);
             }
-            else if (!TryOpenHoverMenu(__instance, radial))
+            else if (TryOpenHoverMenu(__instance, radial))
             {
+                opened = "hover menu";
+            }
+            else
+            {
+                opened = "all items";
                 radial.Open(Wheels.AllItems());
             }
+            WheelLog.Write($"Opened {opened}, release to use {(RadialData.SO.EnableReleaseToUseMode ? "on" : "off")}");
             return false;
         }
     }
 
-    /// <summary>Wheel keys close and switch the wheel, and work with the game's Release to use setting.</summary>
+    /// <summary>Wheel keys close and switch the wheel, and letting go of the opening key after a hold uses what's selected.</summary>
     [HarmonyPatch(typeof(RadialConfigHelper), nameof(RadialConfigHelper.SetItemInteractionControls))]
     internal static class WheelControlsPatch
     {
         private static void Postfix(RadialBase radial)
         {
+            // Release first, so the game's own "held and let go closes" doesn't close the wheel before the use.
             Func<bool> close = radial.GetClose;
-            radial.GetClose = () => (close?.Invoke() ?? false) || Wheels.CloseRequested(radial);
-            Func<bool> release = radial.GetReleaseToUse;
-            radial.GetReleaseToUse = () => (release?.Invoke() ?? false) || Wheels.ReleasedToUse();
+            radial.GetClose = () => Wheels.Released(radial) || (close?.Invoke() ?? false) || Wheels.CloseRequested(radial);
         }
     }
 
