@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// The colours a cartography table knows. Lampblack comes with every table; each other colour is learned once per

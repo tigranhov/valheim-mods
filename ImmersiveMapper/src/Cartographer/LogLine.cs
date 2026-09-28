@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// A ship's log line, on every ship (added when a ship wakes). Once fitted, a reel sits at the stern with a line

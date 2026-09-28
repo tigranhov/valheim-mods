@@ -1,4 +1,6 @@
 <Project>
+  <!-- The valheim-mods root props hold the machine paths (the game folder) for every mod in the repository. -->
+  <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.props" Condition="Exists('$(MSBuildThisFileDirectory)..\Directory.Build.props')" />
   <!-- Machine-specific overrides (ValheimDir, DevProfileDir) go in Directory.Build.user.props, which is gitignored. -->
   <Import Project="Directory.Build.user.props" Condition="Exists('$(MSBuildThisFileDirectory)Directory.Build.user.props')" />
 
@@ -65,10 +67,13 @@
     </Reference>
   </ItemGroup>
 
-  <!-- Copy the built plugin into the Dev profile, if it exists. -->
+  <!-- Copy the built plugin into the Dev profile, if it exists. A project may set DeployFolderName (its package name). -->
   <Target Name="DeployToDevProfile" AfterTargets="Build" Condition="Exists('$(DevProfileDir)\BepInEx\plugins')">
-    <MakeDir Directories="$(DevProfileDir)\BepInEx\plugins\ImmersiveMapper-$(AssemblyName)" />
-    <Copy SourceFiles="$(TargetPath);$(TargetDir)$(TargetName).pdb" DestinationFolder="$(DevProfileDir)\BepInEx\plugins\ImmersiveMapper-$(AssemblyName)" />
-    <Message Importance="high" Text="Deployed $(TargetFileName) to Dev profile" />
+    <PropertyGroup>
+      <DeployFolderName Condition="'$(DeployFolderName)' == ''">ImmersiveMapper-$(AssemblyName)</DeployFolderName>
+    </PropertyGroup>
+    <MakeDir Directories="$(DevProfileDir)\BepInEx\plugins\$(DeployFolderName)" />
+    <Copy SourceFiles="$(TargetPath);$(TargetDir)$(TargetName).pdb" DestinationFolder="$(DevProfileDir)\BepInEx\plugins\$(DeployFolderName)" />
+    <Message Importance="high" Text="Deployed $(TargetFileName) to Dev profile ($(DeployFolderName))" />
   </Target>
 </Project>

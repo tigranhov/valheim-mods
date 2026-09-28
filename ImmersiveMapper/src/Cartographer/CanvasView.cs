@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>What a view's owner does with left-button input on the canvas, in canvas units.</summary>
     internal interface ICanvasTool

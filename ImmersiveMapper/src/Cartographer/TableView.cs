@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// Working at the cartography table: the table's master map (it grows as you draw, with a grid at its scale) and every

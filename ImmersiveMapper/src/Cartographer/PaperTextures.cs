@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// Textures made in code, so the mod ships no asset files: a parchment sheet with handled edges, an edgeless parchment

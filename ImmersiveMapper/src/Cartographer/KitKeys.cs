@@ -3,7 +3,7 @@ using Jotunn.Configs;
 using Jotunn.Managers;
 using UnityEngine;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// The map case's own keys (each player's choice, not synced) and the key hints shown while it's held.

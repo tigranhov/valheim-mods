@@ -1,7 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AssemblyName>Cartographer</AssemblyName>
-    <RootNamespace>ImmersiveMapper.Cartographer</RootNamespace>
+    <RootNamespace>Cartographer</RootNamespace>
+    <!-- Single source of truth for the version is Plugin.PluginVersion. -->
+    <Version>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\Plugin.cs')), '(?&lt;=PluginVersion = ")[^"]+'))</Version>
+  </PropertyGroup>
+
+  <!-- Thunderstore package, like the other valheim-mods: Release builds make bin\<Team>-<Name>-<Version>.zip. -->
+  <PropertyGroup>
+    <ThunderstoreTeam>thov88</ThunderstoreTeam>
+    <ThunderstoreDescription>Draw your own maps in no-map worlds: a map case with a pace tally, a master map at the cartography table, and a ship's log line.</ThunderstoreDescription>
+    <ThunderstoreDependencies>"denikson-BepInExPack_Valheim-5.4.2351", "ValheimModding-Jotunn-2.30.2"</ThunderstoreDependencies>
+    <PackageName>$(ThunderstoreTeam)-$(AssemblyName)</PackageName>
+    <!-- The Dev profile gets the folder name the mod manager would give the imported package. -->
+    <DeployFolderName>$(PackageName)</DeployFolderName>
   </PropertyGroup>
 
   <!-- UI references only this mod needs; kept here so the shared props file stays as it is. -->
@@ -31,4 +43,23 @@
       <Private>false</Private>
     </Reference>
   </ItemGroup>
+
+  <Target Name="PackageThunderstore" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <PropertyGroup>
+      <PackageStageDir>$(BaseOutputPath)Thunderstore\</PackageStageDir>
+      <PackageZip>$(BaseOutputPath)$(PackageName)-$(Version).zip</PackageZip>
+      <ManifestJson>{
+  "name": "$(AssemblyName)",
+  "version_number": "$(Version)",
+  "website_url": "",
+  "description": "$(ThunderstoreDescription)",
+  "dependencies": [$(ThunderstoreDependencies)]
+}</ManifestJson>
+    </PropertyGroup>
+    <RemoveDir Directories="$(PackageStageDir)" />
+    <Copy SourceFiles="$(TargetPath);Thunderstore\README.md;Thunderstore\icon.png" DestinationFolder="$(PackageStageDir)" />
+    <WriteLinesToFile File="$(PackageStageDir)manifest.json" Lines="$(ManifestJson)" Overwrite="true" />
+    <ZipDirectory SourceDirectory="$(PackageStageDir)" DestinationFile="$(PackageZip)" Overwrite="true" />
+    <Message Importance="high" Text="$(AssemblyName) -> $([System.IO.Path]::GetFullPath('$(PackageZip)'))" />
+  </Target>
 </Project>

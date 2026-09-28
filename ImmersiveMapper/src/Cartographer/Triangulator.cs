@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// Cuts a hand-drawn outline into triangles by ear clipping. A freehand outline may cross itself; then no clean ear

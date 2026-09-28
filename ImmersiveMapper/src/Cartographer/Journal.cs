@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>One stretch of route: how many paces the tally counted, and the player's own label.</summary>
     internal sealed class Leg

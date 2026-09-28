@@ -1,6 +1,6 @@
 using BepInEx.Configuration;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>How fast you can move while the map case is out.</summary>
     internal enum ReadingPace

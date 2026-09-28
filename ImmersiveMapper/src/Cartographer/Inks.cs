@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     internal enum BrushSize : byte
     {

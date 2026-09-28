@@ -3,14 +3,14 @@ using BepInEx.Logging;
 using HarmonyLib;
 using Jotunn.Utils;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
     [BepInDependency(Jotunn.Main.ModGuid)]
     [NetworkCompatibility(CompatibilityLevel.EveryoneMustHaveMod, VersionStrictness.Minor)]
     internal sealed class Plugin : BaseUnityPlugin
     {
-        public const string PluginGuid = "ImmersiveMapper.Cartographer";
+        public const string PluginGuid = "thov88.Cartographer";
         public const string PluginName = "Cartographer";
         public const string PluginVersion = "0.1.0";
 

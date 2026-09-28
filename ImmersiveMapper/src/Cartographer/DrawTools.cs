@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     internal enum ToolKind
     {

@@ -75,19 +75,28 @@ Build order: **1. Trader Beacons → 2. Cargo Lashing (+ Packing Crates) → 3. 
 - 2026-09-27 — Cartographer progression approved: upgrades need the next biome's materials (sheet 4
   Black Forest, sheet 5 Swamp, log line Swamp); pigments learned per table with their own biome's
   material; sounding line dropped; log line next to the table as the only ship fitting.
+- 2026-09-28 — Moved into the user's `valheim-mods` repository (`D:epostioriesalheim-mods`), user's
+  pick: all mods, with history (git subtree), under `ImmersiveMapper/`; the old `immersive-mapper`
+  folder is left untouched. This props file now imports the valheim-mods root props (game path).
+  Cartographer follows the repo's style: plugin id `thov88.Cartographer`, namespace `Cartographer`,
+  a Thunderstore zip on Release builds (`bin/thov88-Cartographer-<version>.zip`), deployed to Dev as
+  `plugins/thov88-Cartographer` (`DeployFolderName`; the other mods keep `ImmersiveMapper-<Name>`).
+  Item and saved-data names (`IM_*`) are unchanged.
 
-### Repo layout (planned)
+### Repo layout
 ```
-immersive-mapper/
-  PLAN.md
-  Directory.Build.props      # game path, profile path, shared build settings
-  ImmersiveMapper.sln
-  src/TraderBeacons/
-  src/ShipCargo/             # cargo crates
-  src/CartLashing/           # lashing vanilla carts to ships
-  src/Shared/ShipRiding/     # riding ships, compiled into ShipCargo and CartLashing
-  src/Cartographer/
-  companion/                 # optional web app (milestone 3e)
+valheim-mods/                # the user's repository: Directory.Build.props (game path), ValheimMods.sln
+  ValheimTweaks/             # the user's own mod, built and deployed its own way (Vahe.Styop profile)
+  ImmersiveMapper/           # everything from the old immersive-mapper folder
+    PLAN.md
+    Directory.Build.props      # game path, profile path, shared build settings
+    ImmersiveMapper.sln
+    src/TraderBeacons/
+    src/ShipCargo/             # cargo crates
+    src/CartLashing/           # lashing vanilla carts to ships
+    src/Shared/ShipRiding/     # riding ships, compiled into ShipCargo and CartLashing
+    src/Cartographer/
+    companion/                 # optional web app (milestone 3e)
 ```
 Decompiled game code is reference only — kept in a scratch folder, **never committed**.
 

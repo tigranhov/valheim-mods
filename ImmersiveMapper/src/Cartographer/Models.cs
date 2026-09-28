@@ -5,7 +5,7 @@ using Jotunn.Managers;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// Simple models built in code from Unity's cylinder and the game's own materials (so the mod ships no assets),

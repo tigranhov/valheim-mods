@@ -3,7 +3,7 @@ using Jotunn.Entities;
 using Jotunn.Managers;
 using UnityEngine;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// Creates the log line item (a reel of knotted line) and the reel model that sits on a ship's stern once fitted.

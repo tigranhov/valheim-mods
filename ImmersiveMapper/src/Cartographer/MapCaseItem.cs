@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>The tally's running count for the current leg.</summary>
     internal struct TallyState

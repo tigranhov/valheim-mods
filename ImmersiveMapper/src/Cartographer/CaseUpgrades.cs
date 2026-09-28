@@ -4,7 +4,7 @@ using Jotunn.Entities;
 using Jotunn.Managers;
 using UnityEngine;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// Parts that add a draft sheet to a map case: craft one, then use it from the inventory to fit it into your case

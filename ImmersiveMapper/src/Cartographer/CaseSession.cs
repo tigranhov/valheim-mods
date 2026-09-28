@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// A map case in use: its drafts, its copy of a table's master and its journal, read once and written back to the

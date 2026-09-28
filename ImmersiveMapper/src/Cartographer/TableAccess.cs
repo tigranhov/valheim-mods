@@ -1,6 +1,6 @@
 using HarmonyLib;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// Takes over the vanilla cartography table (in worlds without the map, by default): both of its action spots open the

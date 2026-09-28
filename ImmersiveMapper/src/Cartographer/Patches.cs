@@ -1,7 +1,7 @@
 using HarmonyLib;
 using UnityEngine;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>With the map case out, both hands are on it: no attacking or blocking, and no running (ReadingPace).</summary>
     [HarmonyPatch(typeof(Player), nameof(Player.SetControls))]

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// Right-click picks the thing under the cursor (a label, a stamp, a line, a wash or a fill, topmost first); it can

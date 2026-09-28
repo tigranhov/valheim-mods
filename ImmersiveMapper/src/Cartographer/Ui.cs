@@ -2,7 +2,7 @@ using Jotunn.Managers;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>Small helpers for building the kit's screens in code.</summary>
     internal static class Ui

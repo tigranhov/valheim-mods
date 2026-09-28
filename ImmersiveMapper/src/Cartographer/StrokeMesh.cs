@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// Turns strokes and fills into UI mesh. A solid stroke is one strip with mitred joints, so a see-through wash doesn't

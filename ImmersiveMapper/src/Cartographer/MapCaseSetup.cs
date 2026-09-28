@@ -4,7 +4,7 @@ using Jotunn.Entities;
 using Jotunn.Managers;
 using UnityEngine;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// Creates the map case item: a copy of the hammer (a tool held in the right hand) with its build menu removed and

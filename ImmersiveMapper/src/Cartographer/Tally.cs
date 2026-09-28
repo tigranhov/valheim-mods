@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// Counts the local player's paces while a map case is in the inventory, on foot only (not swimming, riding, sitting or

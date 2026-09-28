@@ -1,6 +1,6 @@
 using System;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>Asks for a line of text with the game's own sign dialog.</summary>
     internal sealed class TextPrompt : TextReceiver

@@ -1,7 +1,7 @@
 using Jotunn.Managers;
 using UnityEngine;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// Runs the map case for the local player each frame: the tally, taking the case out and putting it away with the map

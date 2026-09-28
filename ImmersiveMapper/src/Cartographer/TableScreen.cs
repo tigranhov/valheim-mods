@@ -1,7 +1,7 @@
 using Jotunn.Managers;
 using UnityEngine;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// Opens and closes the table view for the local player: the game's input is blocked while working at the table, and

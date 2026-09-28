@@ -1,6 +1,6 @@
 using System;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// One player at a time at a cartography table. The table's owner decides (like a chest being opened): it marks the

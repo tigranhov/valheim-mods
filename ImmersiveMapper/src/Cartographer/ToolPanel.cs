@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace ImmersiveMapper.Cartographer
+namespace Cartographer
 {
     /// <summary>
     /// The buttons for a <see cref="DrawTools"/>: tools, sizes, opacity, straight and dotted, colours, undo, delete and
