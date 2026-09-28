@@ -1,0 +1,13 @@
+<Project>
+  <!-- Machine-specific paths. Change these if your install or mod manager profile moves. -->
+  <PropertyGroup>
+    <!-- Valheim install: game assemblies (assembly_valheim, UnityEngine) are referenced from here. -->
+    <ValheimDir>D:\SteamLibrary\steamapps\common\Valheim</ValheimDir>
+
+    <!-- Thunderstore Mod Manager profile: BepInEx is referenced from here and builds are deployed into it. -->
+    <ProfileDir>$(APPDATA)\Thunderstore Mod Manager\DataFolder\Valheim\profiles\Vahe.Styop</ProfileDir>
+
+    <!-- Copy the built DLL into $(ProfileDir)\BepInEx\plugins\<ModName> after every build. -->
+    <DeployToProfile>true</DeployToProfile>
+  </PropertyGroup>
+</Project>
