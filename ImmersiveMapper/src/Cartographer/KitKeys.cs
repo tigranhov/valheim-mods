@@ -22,10 +22,16 @@ namespace Cartographer
 
         public static void Register(ConfigFile cfg)
         {
+            ConfigEntry<KeyCode> flip = cfg.Bind("5 - Keys", "FlipSheet", KeyCode.L, "With the map case out: show the next sheet.");
+            // The first builds used F, which is also the game's guardian power key.
+            if (flip.Value == KeyCode.F)
+            {
+                flip.Value = KeyCode.L;
+            }
             FlipSheet = new ButtonConfig
             {
                 Name = "IM_MapFlipSheet",
-                Config = cfg.Bind("5 - Keys", "FlipSheet", KeyCode.F, "With the map case out: show the next sheet."),
+                Config = flip,
                 Hint = "Next sheet",
             };
             EndLeg = new ButtonConfig

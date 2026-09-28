@@ -82,6 +82,8 @@ Build order: **1. Trader Beacons → 2. Cargo Lashing (+ Packing Crates) → 3. 
   a Thunderstore zip on Release builds (`bin/thov88-Cartographer-<version>.zip`), deployed to Dev as
   `plugins/thov88-Cartographer` (`DeployFolderName`; the other mods keep `ImmersiveMapper-<Name>`).
   Item and saved-data names (`IM_*`) are unchanged.
+- 2026-09-29 — Cartographer's next-sheet key moved from F (the game's guardian power key) to L; a
+  config still set to F is moved to L.
 
 ### Repo layout
 ```
@@ -414,7 +416,7 @@ vanilla map's pin icons (house, fire, hammer, point, rune, skull, bed, boss) are
 shown in red ochre with a dark outline; an unedited palette setting picks up the new default.
 The drawing format (v2) and fill triangulation were unit-tested outside the game (a scratch test,
 not committed): round trip, step-1 sheets still readable, self-crossing outlines still fill.
-Keys: M take out / put away (no-map worlds), left-click small map, right-click draw, F next sheet,
+Keys: M take out / put away (no-map worlds), left-click small map, right-click draw, L next sheet,
 J end leg, K reset the tally; in the drawing view Esc closes, right-click selects, Ctrl+Z undoes. The case is a copy of the hammer with a
 leather tube model made in code; the parchment and pen textures are made in code too (no assets).
 Stamps borrow the game's map pin icons, trader icons and a few item/piece icons.
@@ -427,7 +429,7 @@ Stamps borrow the game's map pin icons, trader icons and a few item/piece icons.
 4. J → label → "Leg 1 noted: N paces", the tally starts again from 0.
 5. Right-click: the drawing view. Charcoal lines, a stamp, a note, the eraser, Ctrl+Z, sheet tabs,
    the Journal tab (End leg button). Esc / right-click / Done closes; the game menu must not open.
-6. F flips sheets while reading. Put the case in a chest and back, log out and in: all still there.
+6. L flips sheets while reading. Put the case in a chest and back, log out and in: all still there.
 7. Config: `FieldDrawing = Everything` → ink + colours; `Tally Mode = Footsteps`; `ReadingPace`.
 8. Hold pose: `9 - Hold tuning` sliders (take it out again to apply). Log: "Hammer children".
 

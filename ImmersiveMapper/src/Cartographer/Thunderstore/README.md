@@ -9,7 +9,7 @@ no coordinates, no "you are here", no automatic pins. You measure, you sketch, y
   paces while you carry the case, and a **journal** of legs.
 - **M** takes it out (in no-map worlds). **Left-click** shows the small map, **right-click** opens
   the full view to draw: charcoal, stamps, labels, eraser. Drafts stay rough on purpose.
-- **J** ends a leg (notes the tally with your own label), **K** resets the tally, **F** flips sheets.
+- **J** ends a leg (notes the tally with your own label), **K** resets the tally, **L** flips sheets.
 - In the drawing view: wheel zooms, middle mouse pans, **right-click selects** a thing to move,
   nudge, resize or delete, Ctrl+Z undoes, Esc closes.
 
