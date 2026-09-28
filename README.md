@@ -13,6 +13,7 @@ no automatic pins.
 | [Ship Cargo](ImmersiveMapper/src/ShipCargo) | Cargo crates, built with the hammer. Set one down on a ship's deck and it rides along without sliding; carry it in your arms or pack it, contents and all. | Jötunn | Tested |
 | [Cart Lashing](ImmersiveMapper/src/CartLashing) | Lash a cart standing on a ship's deck so it rides the ship instead of bumping off. Works with any cart built on the vanilla cart. | Jötunn | Tested |
 | [Trader Beacons](ImmersiveMapper/src/TraderBeacons) | Traders signal travellers from afar with a column of smoke, once their camp exists, until you've found them. Something to walk towards, not a pin. | Jötunn | Works in single player |
+| [Better Wheel](BetterWheel) | The item wheel opens straight on all your items (no category wheel), extra wheels on their own keys (food, gear, ...), and several picks per opening. Client side only. | — | In testing |
 | [Valheim Tweaks](ValheimTweaks) | A configurable mining drop multiplier (iron scrap). | — | — |
 
 Every mod needs [BepInExPack for Valheim](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/);
@@ -51,7 +52,9 @@ dotnet build ValheimMods.sln -c Release
 Everything, Valheim Tweaks included. Valheim Tweaks updates its profile only once its package has
 been imported there.
 
-Release builds of Cartographer and Valheim Tweaks also make a Thunderstore package,
+Better Wheel builds and deploys to the Dev profile on its own (`dotnet build BetterWheel -c Release`).
+
+Release builds of Cartographer, Better Wheel and Valheim Tweaks also make a Thunderstore package,
 `bin/<team>-<name>-<version>.zip`, to import in the mod manager or upload.
 
 ## Layout
@@ -60,6 +63,7 @@ Release builds of Cartographer and Valheim Tweaks also make a Thunderstore packa
 valheim-mods/
   Directory.Build.props      # machine paths for every mod
   ValheimMods.sln            # all projects
+  BetterWheel/
   ValheimTweaks/
   ImmersiveMapper/
     PLAN.md                  # design, decisions and in-game test checklists for the immersive mods
