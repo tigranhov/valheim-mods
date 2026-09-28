@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>ShipCargo</AssemblyName>
+    <RootNamespace>ImmersiveMapper.ShipCargo</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Riding ships, shared with CartLashing: compiled into each mod, so each still installs on its own. -->
+    <Compile Include="..\Shared\ShipRiding\*.cs" Link="Shared\ShipRiding\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Jötunn's CustomPiece has AssetBundle overloads. -->
+    <Reference Include="UnityEngine.AssetBundleModule">
+      <HintPath>$(ValheimManaged)\UnityEngine.AssetBundleModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

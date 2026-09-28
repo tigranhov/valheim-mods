@@ -1,0 +1,74 @@
+<Project>
+  <!-- Machine-specific overrides (ValheimDir, DevProfileDir) go in Directory.Build.user.props, which is gitignored. -->
+  <Import Project="Directory.Build.user.props" Condition="Exists('$(MSBuildThisFileDirectory)Directory.Build.user.props')" />
+
+  <PropertyGroup>
+    <ValheimDir Condition="'$(ValheimDir)' == ''">D:\SteamLibrary\steamapps\common\Valheim</ValheimDir>
+    <ValheimManaged>$(ValheimDir)\valheim_Data\Managed</ValheimManaged>
+    <!-- Thunderstore Mod Manager profile used for testing. After a build, the plugin is copied here if the profile exists. -->
+    <DevProfileDir Condition="'$(DevProfileDir)' == ''">$(APPDATA)\Thunderstore Mod Manager\DataFolder\Valheim\profiles\Dev</DevProfileDir>
+
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>10</LangVersion>
+    <Nullable>disable</Nullable>
+    <Deterministic>true</Deterministic>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BepInEx.Core" Version="5.4.21" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.2" PrivateAssets="all" />
+    <PackageReference Include="JotunnLib" Version="2.30.2" PrivateAssets="all" ExcludeAssets="runtime;build;buildTransitive" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="assembly_valheim" Publicize="true">
+      <HintPath>$(ValheimManaged)\assembly_valheim.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_utils" Publicize="true">
+      <HintPath>$(ValheimManaged)\assembly_utils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_guiutils" Publicize="true">
+      <HintPath>$(ValheimManaged)\assembly_guiutils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="SoftReferenceableAssets">
+      <HintPath>$(ValheimManaged)\SoftReferenceableAssets.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(ValheimManaged)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(ValheimManaged)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AnimationModule">
+      <HintPath>$(ValheimManaged)\UnityEngine.AnimationModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule">
+      <HintPath>$(ValheimManaged)\UnityEngine.ParticleSystemModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>$(ValheimManaged)\UnityEngine.AudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(ValheimManaged)\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Copy the built plugin into the Dev profile, if it exists. -->
+  <Target Name="DeployToDevProfile" AfterTargets="Build" Condition="Exists('$(DevProfileDir)\BepInEx\plugins')">
+    <MakeDir Directories="$(DevProfileDir)\BepInEx\plugins\ImmersiveMapper-$(AssemblyName)" />
+    <Copy SourceFiles="$(TargetPath);$(TargetDir)$(TargetName).pdb" DestinationFolder="$(DevProfileDir)\BepInEx\plugins\ImmersiveMapper-$(AssemblyName)" />
+    <Message Importance="high" Text="Deployed $(TargetFileName) to Dev profile" />
+  </Target>
+</Project>
