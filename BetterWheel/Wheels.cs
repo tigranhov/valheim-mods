@@ -20,6 +20,7 @@ namespace BetterWheel
             AccessTools.MethodDelegate<Func<Player, bool>>(AccessTools.Method(typeof(Player), "TakeInput"));
 
         private static int _requested = -1;
+        private static bool _releaseOverridden;
         private static int _open = -1;
         private static int _openedFrame;
         private static float _pressedAt;
@@ -31,6 +32,7 @@ namespace BetterWheel
             if (player == null || hud == null || hud.m_radialMenu == null || !Hud.InRadial())
             {
                 _open = -1;
+                RestoreRelease();
             }
             // While a wheel is open, its keys are read by the wheel's own close check (see WheelControlsPatch).
             if (player == null || hud == null || hud.m_radialMenu == null || Hud.InRadial())
@@ -65,6 +67,32 @@ namespace BetterWheel
             return config != null;
         }
 
+        /// <summary>
+        /// Sets the game's release-to-use flag for the wheel being opened (the game reads it when a key is let go):
+        /// a wheel key's own setting, or the general one for the wheel and emote keys. Put back when the wheel closes.
+        /// </summary>
+        public static void ApplyRelease(bool fromWheelKey)
+        {
+            ReleaseToUse setting = fromWheelKey && _open >= 0 ? WheelConfig.Release[_open].Value : WheelConfig.MainRelease.Value;
+            RadialData.SO.EnableReleaseToUseMode = setting == ReleaseToUse.Game ? GameRelease() : setting == ReleaseToUse.On;
+            _releaseOverridden = true;
+        }
+
+        private static void RestoreRelease()
+        {
+            if (_releaseOverridden && RadialData.SO != null)
+            {
+                RadialData.SO.EnableReleaseToUseMode = GameRelease();
+                _releaseOverridden = false;
+            }
+        }
+
+        // The game's own setting, as it loads it.
+        private static bool GameRelease()
+        {
+            return PlatformPrefs.GetInt("RadialReleaseToUse") != 0;
+        }
+
         /// <summary>All your items: the game's own "all items" list, the one it spirals through.</summary>
         public static ItemGroupConfig AllItems()
         {
@@ -73,12 +101,19 @@ namespace BetterWheel
             return config;
         }
 
-        /// <summary>For the wheel's close check: its key again closes it; another wheel's key switches to that wheel.</summary>
+        /// <summary>
+        /// For the wheel's close check: its key again closes it; another wheel's key switches to that wheel. Without
+        /// release to use, holding the key and letting go closes it too, as the game does for the wheel key.
+        /// </summary>
         public static bool CloseRequested(RadialBase radial)
         {
             if (_open < 0 || Time.frameCount <= _openedFrame)
             {
                 return false;
+            }
+            if (!RadialData.SO.EnableReleaseToUseMode && Time.time - _pressedAt > RadialData.SO.HoldCloseDelay && KeyUp(WheelConfig.Keys[_open].Value))
+            {
+                return true;
             }
             int pressed = PressedWheel();
             if (pressed < 0)
@@ -95,6 +130,7 @@ namespace BetterWheel
                 _open = pressed;
                 _openedFrame = Time.frameCount;
                 _pressedAt = Time.time;
+                ApplyRelease(true);
                 radial.QueuedOpen(next);
             }
             return false;

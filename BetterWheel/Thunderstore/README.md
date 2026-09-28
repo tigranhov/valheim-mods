@@ -11,6 +11,8 @@ A quicker item wheel for Valheim.
   Press the key again to close; another wheel's key switches to that wheel. Side mouse buttons work.
 - **Several picks per opening**: eat three foods, swap your whole kit, then close the wheel. (The
   game only keeps it open for gear, and for food while you can still eat.)
+- **Release to use**, per wheel: hold the key, point at something, let go, and it's used. A quick
+  tap still opens the wheel for clicking.
 
 ## Settings
 
@@ -18,11 +20,14 @@ A quicker item wheel for Valheim.
 |---|---|---|
 | General / WheelKeyOpens | AllItems | `Categories` brings back the game's category wheel. |
 | General / AfterUse | UntilClosed | `Vanilla`: the game decides when the wheel closes. |
+| General / ReleaseToUse | On | For G and T: letting go of the held key uses what you point at (`Off`: just closes; `Game`: the game's own setting). |
+| Wheel 1–4 / ReleaseToUse | On | The same, for that wheel's key. |
 | Wheel 1–4 / Key | none | Opens that wheel. |
 | Wheel 1–4 / Name | Food & gear, Food, Gear | Shown in the middle of the wheel. |
 | Wheel 1–4 / ItemTypes | | Item types on the wheel, e.g. `Consumable, Helmet, Chest, Legs`. |
 
-The game's own wheel settings (size, hover select, release to use, ...) all still apply.
+The game's other wheel settings (size, hover select, animation, ...) still apply; its Release to use
+setting is replaced by the ReleaseToUse settings above (set them to `Game` to follow it).
 
 ## Multiplayer
 

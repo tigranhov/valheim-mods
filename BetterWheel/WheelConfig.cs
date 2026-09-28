@@ -20,6 +20,17 @@ namespace BetterWheel
         Vanilla,
     }
 
+    /// <summary>Letting go of a wheel's key after holding it.</summary>
+    public enum ReleaseToUse
+    {
+        /// <summary>Uses what the cursor points at, and closes. A quick tap still opens the wheel for clicking.</summary>
+        On,
+        /// <summary>Just closes the wheel.</summary>
+        Off,
+        /// <summary>Whatever the game's own Release to use setting says.</summary>
+        Game,
+    }
+
     /// <summary>
     /// Every setting is the player's own: the wheel is a menu on your screen, nothing is sent to other players.
     /// </summary>
@@ -34,6 +45,8 @@ namespace BetterWheel
 
         public static ConfigEntry<MainWheel> Main;
         public static ConfigEntry<KeepOpen> AfterUse;
+        public static ConfigEntry<ReleaseToUse> MainRelease;
+        public static readonly ConfigEntry<ReleaseToUse>[] Release = new ConfigEntry<ReleaseToUse>[WheelSlots];
         public static readonly ConfigEntry<string>[] Names = new ConfigEntry<string>[WheelSlots];
         public static readonly ConfigEntry<KeyboardShortcut>[] Keys = new ConfigEntry<KeyboardShortcut>[WheelSlots];
         public static readonly ConfigEntry<string>[] Items = new ConfigEntry<string>[WheelSlots];
@@ -46,8 +59,10 @@ namespace BetterWheel
                 + "game's category wheel.");
             AfterUse = cfg.Bind("1 - General", "AfterUse", KeepOpen.UntilClosed,
                 "After you use something from a wheel. UntilClosed: the wheel stays open for the next pick until you close it "
-                + "(its key again, Esc or right-click). Vanilla: gear and food keep it open, other things close it. The game's "
-                + "Release to use setting always closes it.");
+                + "(its key again, Esc or right-click). Vanilla: gear and food keep it open, other things close it. Letting go "
+                + "of a held key with ReleaseToUse on always closes it.");
+            MainRelease = cfg.Bind("1 - General", "ReleaseToUse", ReleaseToUse.On,
+                ReleaseText("the wheel key (G) and the emote key (T)"));
 
             // Extra wheels start without a key: bind the ones you want.
             string[] names = { "Food & gear", "Food", "Gear", "" };
@@ -59,11 +74,19 @@ namespace BetterWheel
                 Keys[i] = cfg.Bind(section, "Key", KeyboardShortcut.Empty,
                     "Opens this wheel (press again to close). Any key, with modifiers if you like, or a side mouse button (Mouse3, Mouse4). "
                     + "Empty: no key, the wheel is off.");
+                Release[i] = cfg.Bind(section, "ReleaseToUse", ReleaseToUse.On, ReleaseText("this wheel's key"));
                 Items[i] = cfg.Bind(section, "ItemTypes", items[i],
                     "Item types on this wheel, separated by commas: Consumable (food, meads, potions), OneHandedWeapon, "
                     + "TwoHandedWeapon, TwoHandedWeaponLeft, Bow, Shield, Torch, Tool, Attach_Atgeir, Ammo, Helmet, Chest, Legs, "
                     + "Shoulder, Hands, Utility, Trinket, Material, Trophy, Fish, Misc.");
             }
+        }
+
+        private static string ReleaseText(string keys)
+        {
+            return $"Holding {keys}, pointing at something and letting go. On: uses what the cursor points at and closes the wheel "
+                + "(a quick tap still opens it for clicking). Off: letting go just closes it. Game: the game's own Release to use "
+                + "setting.";
         }
     }
 }

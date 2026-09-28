@@ -19,6 +19,7 @@ namespace BetterWheel
         private static bool Prefix(OpenRadialConfig __instance, RadialBase radial)
         {
             bool fromWheelKey = Wheels.TryTakeRequest(out ItemGroupConfig requested);
+            Wheels.ApplyRelease(fromWheelKey);
             if (!fromWheelKey && WheelConfig.Main.Value == MainWheel.Categories)
             {
                 return true;
