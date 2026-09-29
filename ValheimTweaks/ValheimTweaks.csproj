@@ -39,13 +39,13 @@
       <ManifestJson>{
   "name": "$(AssemblyName)",
   "version_number": "$(Version)",
-  "website_url": "",
+  "website_url": "https://github.com/tigranhov/valheim-mods",
   "description": "$(ThunderstoreDescription)",
   "dependencies": [$(ThunderstoreDependencies)]
 }</ManifestJson>
     </PropertyGroup>
     <RemoveDir Directories="$(PackageStageDir)" />
-    <Copy SourceFiles="$(TargetPath);Thunderstore\README.md;Thunderstore\icon.png" DestinationFolder="$(PackageStageDir)" />
+    <Copy SourceFiles="$(TargetPath);Thunderstore\README.md;Thunderstore\CHANGELOG.md;Thunderstore\icon.png" DestinationFolder="$(PackageStageDir)" />
     <WriteLinesToFile File="$(PackageStageDir)manifest.json" Lines="$(ManifestJson)" Overwrite="true" />
     <ZipDirectory SourceDirectory="$(PackageStageDir)" DestinationFile="$(PackageZip)" Overwrite="true" />
     <Message Importance="high" Text="$(AssemblyName) -> $([System.IO.Path]::GetFullPath('$(PackageZip)'))" />
