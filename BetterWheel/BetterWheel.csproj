@@ -12,7 +12,7 @@
   <!-- Thunderstore package. Team must match the author you enter when importing (and your thunderstore.io team if you publish). -->
   <PropertyGroup>
     <ThunderstoreTeam>nexuschip</ThunderstoreTeam>
-    <ThunderstoreDescription>The item wheel opens straight on all your items, with extra wheel keys (food, gear, ...) and several picks per opening.</ThunderstoreDescription>
+    <ThunderstoreDescription>Item wheel opens on all your items. Optional food and gear wheels on their own keys, several picks per opening, release to use.</ThunderstoreDescription>
     <ThunderstoreDependencies>"denikson-BepInExPack_Valheim-5.4.2351"</ThunderstoreDependencies>
     <PackageName>$(ThunderstoreTeam)-$(AssemblyName)</PackageName>
   </PropertyGroup>

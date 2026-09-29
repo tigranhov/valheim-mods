@@ -8,7 +8,7 @@ namespace BetterWheel
     {
         public const string PluginGuid = "nexuschip.BetterWheel";
         public const string PluginName = "Better Wheel";
-        public const string PluginVersion = "0.1.0";
+        public const string PluginVersion = "1.0.0";
 
         private readonly Harmony _harmony = new Harmony(PluginGuid);
 

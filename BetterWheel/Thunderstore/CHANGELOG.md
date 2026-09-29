@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0
+
+- Shorter README. No gameplay changes since 0.1.0.
+
 ## 0.1.0
 
 First release.
