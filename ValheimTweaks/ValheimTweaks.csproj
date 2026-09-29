@@ -11,7 +11,7 @@
 
   <!-- Thunderstore package. Team must match the author you enter when importing (and your thunderstore.io team if you publish). -->
   <PropertyGroup>
-    <ThunderstoreTeam>thov88</ThunderstoreTeam>
+    <ThunderstoreTeam>nexuschip</ThunderstoreTeam>
     <ThunderstoreDescription>Configurable mining drop multipliers (iron scrap). Works with Configuration Manager.</ThunderstoreDescription>
     <ThunderstoreDependencies>"denikson-BepInExPack_Valheim-5.4.2351"</ThunderstoreDependencies>
     <PackageName>$(ThunderstoreTeam)-$(AssemblyName)</PackageName>

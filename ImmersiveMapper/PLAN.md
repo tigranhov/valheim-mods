@@ -75,12 +75,12 @@ Build order: **1. Trader Beacons → 2. Cargo Lashing (+ Packing Crates) → 3. 
 - 2026-09-27 — Cartographer progression approved: upgrades need the next biome's materials (sheet 4
   Black Forest, sheet 5 Swamp, log line Swamp); pigments learned per table with their own biome's
   material; sounding line dropped; log line next to the table as the only ship fitting.
-- 2026-09-28 — Moved into the user's `valheim-mods` repository (`D:epostioriesalheim-mods`), user's
+- 2026-09-28 — Moved into the user's `valheim-mods` repository (`D:\repostiories\valheim-mods`), user's
   pick: all mods, with history (git subtree), under `ImmersiveMapper/`; the old `immersive-mapper`
   folder is left untouched. This props file now imports the valheim-mods root props (game path).
-  Cartographer follows the repo's style: plugin id `thov88.Cartographer`, namespace `Cartographer`,
-  a Thunderstore zip on Release builds (`bin/thov88-Cartographer-<version>.zip`), deployed to Dev as
-  `plugins/thov88-Cartographer` (`DeployFolderName`; the other mods keep `ImmersiveMapper-<Name>`).
+  Cartographer follows the repo's style: plugin id `nexuschip.Cartographer`, namespace `Cartographer`,
+  a Thunderstore zip on Release builds (`bin/nexuschip-Cartographer-<version>.zip`), deployed to Dev as
+  `plugins/nexuschip-Cartographer` (`DeployFolderName`; the other mods keep `ImmersiveMapper-<Name>`).
   Item and saved-data names (`IM_*`) are unchanged.
 - 2026-09-29 — Cartographer's next-sheet key moved from F (the game's guardian power key) to L; a
   config still set to F is moved to L.

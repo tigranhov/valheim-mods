@@ -8,7 +8,7 @@
 
   <!-- Thunderstore package, like the other valheim-mods: Release builds make bin\<Team>-<Name>-<Version>.zip. -->
   <PropertyGroup>
-    <ThunderstoreTeam>thov88</ThunderstoreTeam>
+    <ThunderstoreTeam>nexuschip</ThunderstoreTeam>
     <ThunderstoreDescription>Draw your own maps in no-map worlds: a map case with a pace tally, a master map at the cartography table, and a ship's log line.</ThunderstoreDescription>
     <ThunderstoreDependencies>"denikson-BepInExPack_Valheim-5.4.2351", "ValheimModding-Jotunn-2.30.2"</ThunderstoreDependencies>
     <PackageName>$(ThunderstoreTeam)-$(AssemblyName)</PackageName>

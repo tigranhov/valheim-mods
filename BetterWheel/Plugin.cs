@@ -6,7 +6,7 @@ namespace BetterWheel
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
     public class Plugin : BaseUnityPlugin
     {
-        public const string PluginGuid = "thov88.BetterWheel";
+        public const string PluginGuid = "nexuschip.BetterWheel";
         public const string PluginName = "Better Wheel";
         public const string PluginVersion = "0.1.0";
 

@@ -10,7 +10,7 @@ namespace Cartographer
     [NetworkCompatibility(CompatibilityLevel.EveryoneMustHaveMod, VersionStrictness.Minor)]
     internal sealed class Plugin : BaseUnityPlugin
     {
-        public const string PluginGuid = "thov88.Cartographer";
+        public const string PluginGuid = "nexuschip.Cartographer";
         public const string PluginName = "Cartographer";
         public const string PluginVersion = "0.1.0";
 
