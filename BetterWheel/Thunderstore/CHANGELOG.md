@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- Fixed: after loading in, an extra wheel's key did nothing until the wheel key had opened the wheel once.
+
 ## 1.0.0
 
 - Shorter README. No gameplay changes since 0.1.0.

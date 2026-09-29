@@ -45,7 +45,7 @@ namespace BetterWheel
                 return;
             }
             int pressed = PressedWheel();
-            if (pressed < 0 || Create(pressed) == null || !CanOpen(player))
+            if (pressed < 0 || !HasItemTypes(pressed) || !CanOpen(player))
             {
                 return;
             }
@@ -182,6 +182,14 @@ namespace BetterWheel
             return false;
         }
 
+        // Checked without building the list: the game sets up its wheel data only when its wheel first opens, so building
+        // one before that (after loading in) failed and the key did nothing until the wheel key had opened the wheel once.
+        private static bool HasItemTypes(int slot)
+        {
+            return ParseTypes(WheelConfig.Items[slot].Value).Length > 0;
+        }
+
+        // Only while the wheel opens or is open, when the game's wheel data is there.
         private static ItemGroupConfig Create(int slot)
         {
             ItemDrop.ItemData.ItemType[] types = ParseTypes(WheelConfig.Items[slot].Value);
