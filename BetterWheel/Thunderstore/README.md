@@ -1,6 +1,6 @@
 # Better Wheel
 
-Press G and the item wheel opens on all your items, skipping the category wheel.
+Press G (the wheel key in Valheim's settings) and the item wheel opens on all your items, skipping the category wheel.
 
 - Extra wheels for just food, just gear, or both. Up to four, each with its own key and item types.
 - The wheel stays open, so you can eat three foods or change your gear in one go.
