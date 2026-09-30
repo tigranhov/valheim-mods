@@ -12,7 +12,7 @@
   <!-- Thunderstore package. Team must match the author you enter when importing (and your thunderstore.io team if you publish). -->
   <PropertyGroup>
     <ThunderstoreTeam>nexuschip</ThunderstoreTeam>
-    <ThunderstoreDescription>Keep mining one spot and the whole rock follows: leftover damage carries on to the next chunk, loot lands in front of you.</ThunderstoreDescription>
+    <ThunderstoreDescription>Mine a whole rock from one spot: each swing damages the chunk farthest from you, the one you hit goes last, and loot lands in front of you.</ThunderstoreDescription>
     <ThunderstoreDependencies>"denikson-BepInExPack_Valheim-5.4.2351"</ThunderstoreDependencies>
     <PackageName>$(ThunderstoreTeam)-$(AssemblyName)</PackageName>
   </PropertyGroup>

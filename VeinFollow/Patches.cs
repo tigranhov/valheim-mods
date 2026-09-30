@@ -23,21 +23,6 @@ namespace VeinFollow
         }
     }
 
-    /// <summary>Your pickaxe hitting the ground next to a chunk (buried or not) mines the chunk instead of digging.</summary>
-    [HarmonyPatch(typeof(Attack), nameof(Attack.SpawnOnHitTerrain))]
-    internal static class GroundHitPatch
-    {
-        private static bool Prefix(Vector3 hitPoint, Character character, ItemDrop.ItemData weapon, ref GameObject __result)
-        {
-            if (!Follow.TryMineBelow(hitPoint, character, weapon))
-            {
-                return true;
-            }
-            __result = null;
-            return false;
-        }
-    }
-
     /// <summary>Loot from a followed swing lands in front of you.</summary>
     [HarmonyPatch(typeof(ItemDrop), nameof(ItemDrop.OnCreateNew), typeof(GameObject), typeof(bool))]
     internal static class LootPlacePatch

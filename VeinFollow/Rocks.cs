@@ -33,26 +33,22 @@ namespace VeinFollow
             return Collider(area).bounds.center;
         }
 
-        /// <summary>The chunk left nearest to a point, or -1 when none is.</summary>
-        public int Nearest(Vector3 point)
+        /// <summary>The chunk left farthest from a point (by its middle), leaving one out; -1 when there's none.</summary>
+        public int Farthest(Vector3 point, int except)
         {
             int best = -1;
-            float bestEdge = float.MaxValue;
-            float bestCenter = float.MaxValue;
+            float bestDistance = -1f;
             for (int i = 0; i < Count; i++)
             {
-                if (!Alive(i))
+                if (i == except || !Alive(i))
                 {
                     continue;
                 }
-                Bounds bounds = Collider(i).bounds;
-                float edge = bounds.SqrDistance(point);
-                float center = (bounds.center - point).sqrMagnitude;
-                if (edge < bestEdge || (Mathf.Approximately(edge, bestEdge) && center < bestCenter))
+                float distance = (Collider(i).bounds.center - point).sqrMagnitude;
+                if (distance > bestDistance)
                 {
                     best = i;
-                    bestEdge = edge;
-                    bestCenter = center;
+                    bestDistance = distance;
                 }
             }
             return best;
