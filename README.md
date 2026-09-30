@@ -14,6 +14,7 @@ no automatic pins.
 | [Cart Lashing](ImmersiveMapper/src/CartLashing) | Lash a cart standing on a ship's deck so it rides the ship instead of bumping off. Works with any cart built on the vanilla cart. | Jötunn | Tested |
 | [Trader Beacons](ImmersiveMapper/src/TraderBeacons) | Traders signal travellers from afar with a column of smoke, once their camp exists, until you've found them. Something to walk towards, not a pin. | Jötunn | Works in single player |
 | [Better Wheel](BetterWheel) | The item wheel opens straight on all your items (no category wheel), extra wheels on their own keys (food, gear, ...), and several picks per opening. Client side only. | — | In testing |
+| [Vein Follow](VeinFollow) | Keep mining one spot and the whole rock follows: a swing's leftover damage carries on to the next chunk, swinging at the ground mines buried chunks, loot lands in front of you, and the ground over buried chunks can be dug out as they break. Client side only. | — | In testing |
 | [Valheim Tweaks](ValheimTweaks) | A configurable mining drop multiplier (iron scrap). | — | — |
 
 Every mod needs [BepInExPack for Valheim](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/);
@@ -52,9 +53,10 @@ dotnet build ValheimMods.sln -c Release
 Everything, Valheim Tweaks included. Valheim Tweaks updates its profile only once its package has
 been imported there.
 
-Better Wheel builds and deploys to the Dev profile on its own (`dotnet build BetterWheel -c Release`).
+Better Wheel and Vein Follow build and deploy to the Dev profile on their own (`dotnet build BetterWheel -c Release`,
+`dotnet build VeinFollow -c Release`).
 
-Release builds of Cartographer, Better Wheel and Valheim Tweaks also make a Thunderstore package,
+Release builds of Cartographer, Better Wheel, Vein Follow and Valheim Tweaks also make a Thunderstore package,
 `bin/<team>-<name>-<version>.zip`, to import in the mod manager or upload.
 
 ## Layout
@@ -64,6 +66,7 @@ valheim-mods/
   Directory.Build.props      # machine paths for every mod
   ValheimMods.sln            # all projects
   BetterWheel/
+  VeinFollow/
   ValheimTweaks/
   ImmersiveMapper/
     PLAN.md                  # design, decisions and in-game test checklists for the immersive mods

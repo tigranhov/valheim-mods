@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>VeinFollow</AssemblyName>
+    <RootNamespace>VeinFollow</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <!-- Single source of truth for the version is Plugin.PluginVersion. -->
+    <Version>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\Plugin.cs')), '(?&lt;=PluginVersion = ")[^"]+'))</Version>
+  </PropertyGroup>
+
+  <!-- Thunderstore package. Team must match the author you enter when importing (and your thunderstore.io team if you publish). -->
+  <PropertyGroup>
+    <ThunderstoreTeam>nexuschip</ThunderstoreTeam>
+    <ThunderstoreDescription>Keep mining one spot and the whole rock follows: leftover damage carries on to the next chunk, loot lands in front of you.</ThunderstoreDescription>
+    <ThunderstoreDependencies>"denikson-BepInExPack_Valheim-5.4.2351"</ThunderstoreDependencies>
+    <PackageName>$(ThunderstoreTeam)-$(AssemblyName)</PackageName>
+  </PropertyGroup>
+
+  <!-- Tested in the clean Dev profile: BepInEx is referenced from there and builds are copied into it. -->
+  <PropertyGroup>
+    <TestProfileDir>$(APPDATA)\Thunderstore Mod Manager\DataFolder\Valheim\profiles\Dev</TestProfileDir>
+    <ManagedDir>$(ValheimDir)\valheim_Data\Managed</ManagedDir>
+    <BepInExCoreDir>$(TestProfileDir)\BepInEx\core</BepInExCoreDir>
+  </PropertyGroup>
+
+  <!-- The rocks keep their chunks in private fields, so the game assembly is referenced publicized. -->
+  <ItemGroup>
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.2" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Provided by the game / BepInEx at runtime, so never copied to the output. -->
+  <ItemGroup>
+    <Reference Include="BepInEx" HintPath="$(BepInExCoreDir)\BepInEx.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(BepInExCoreDir)\0Harmony.dll" Private="false" />
+    <Reference Include="assembly_valheim" HintPath="$(ManagedDir)\assembly_valheim.dll" Private="false" Publicize="true" />
+    <Reference Include="assembly_utils" HintPath="$(ManagedDir)\assembly_utils.dll" Private="false" />
+    <Reference Include="UnityEngine" HintPath="$(ManagedDir)\UnityEngine.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(ManagedDir)\UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.PhysicsModule" HintPath="$(ManagedDir)\UnityEngine.PhysicsModule.dll" Private="false" />
+  </ItemGroup>
+
+  <!-- Release builds produce bin\<Team>-<Name>-<Version>.zip: import it in the mod manager or upload it to Thunderstore. -->
+  <Target Name="PackageThunderstore" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <PropertyGroup>
+      <PackageStageDir>$(BaseOutputPath)Thunderstore\</PackageStageDir>
+      <PackageZip>$(BaseOutputPath)$(PackageName)-$(Version).zip</PackageZip>
+      <ManifestJson>{
+  "name": "$(AssemblyName)",
+  "version_number": "$(Version)",
+  "website_url": "https://github.com/tigranhov/valheim-mods",
+  "description": "$(ThunderstoreDescription)",
+  "dependencies": [$(ThunderstoreDependencies)]
+}</ManifestJson>
+    </PropertyGroup>
+    <RemoveDir Directories="$(PackageStageDir)" />
+    <Copy SourceFiles="$(TargetPath);Thunderstore\README.md;Thunderstore\CHANGELOG.md;Thunderstore\icon.png" DestinationFolder="$(PackageStageDir)" />
+    <WriteLinesToFile File="$(PackageStageDir)manifest.json" Lines="$(ManifestJson)" Overwrite="true" />
+    <ZipDirectory SourceDirectory="$(PackageStageDir)" DestinationFile="$(PackageZip)" Overwrite="true" />
+    <Message Importance="high" Text="$(AssemblyName) -> $([System.IO.Path]::GetFullPath('$(PackageZip)'))" />
+  </Target>
+
+  <!-- Copy every build into the Dev profile for testing. -->
+  <Target Name="DeployToTestProfile" AfterTargets="Build" Condition="Exists('$(TestProfileDir)\BepInEx\plugins')">
+    <PropertyGroup>
+      <DeployDir>$(TestProfileDir)\BepInEx\plugins\$(PackageName)</DeployDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(DeployDir)" />
+    <Copy SourceFiles="$(TargetPath);$(TargetDir)$(TargetName).pdb" DestinationFolder="$(DeployDir)" SkipUnchangedFiles="true" />
+    <Message Importance="high" Text="$(AssemblyName) -> $(DeployDir)" />
+  </Target>
+
+</Project>
